@@ -1,0 +1,18 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model CalculatorHistory {
+  id         String   @id @default(cuid())
+  deviceId   String
+  expression String
+  result     String
+  createdAt  DateTime @default(now())
+
+  @@index([deviceId, createdAt(sort: Desc)])
+}
