@@ -9,6 +9,11 @@
 
 工作流文件：[`/.github/workflows/docker-publish.yml`](/Users/jsh/project/tool/toolbox/codex_v1/.github/workflows/docker-publish.yml)
 
+## GitHub Environment
+
+- 当前工作流绑定了 `master` environment
+- 配置位置：`Settings -> Environments -> master`
+
 ## 需要配置的 GitHub Variables
 
 - `DOCKER_REGISTRY`
@@ -18,9 +23,6 @@
   - 示例：`your-org/toolbox-web`
 - `API_IMAGE`
   - 示例：`your-org/toolbox-api`
-- `NEXT_PUBLIC_API_BASE_URL`
-  - 示例：`https://api.example.com`
-  - 说明：这是前端构建时注入的 API 地址
 
 ## 需要配置的 GitHub Secrets
 
@@ -67,9 +69,7 @@ API 容器支持这些环境变量：
 构建 web 镜像：
 
 ```bash
-docker build -f docker/web.Dockerfile \
-  --build-arg NEXT_PUBLIC_API_BASE_URL=https://api.example.com \
-  -t toolbox-web:local .
+docker build -f docker/web.Dockerfile -t toolbox-web:local .
 ```
 
 构建 api 镜像：
@@ -93,8 +93,29 @@ docker run --rm -p 3001:3001 \
 docker run --rm -p 3000:3000 toolbox-web:local
 ```
 
+## docker-compose 部署
+
+- Compose 文件：[docker-compose.yml](/Users/jsh/project/tool/toolbox/codex_v1/docker-compose.yml)
+- Nginx 配置：[docker/nginx.conf](/Users/jsh/project/tool/toolbox/codex_v1/docker/nginx.conf)
+- 环境变量示例：[.env.deploy.example](/Users/jsh/project/tool/toolbox/codex_v1/.env.deploy.example)
+
+当前部署方式：
+
+- `nginx` 对外暴露 `80`
+- `/` 转发到 `web`
+- `/api/` 转发到 `api`
+- 前端默认直接请求同域 `/api`
+
+启动前：
+
+```bash
+cp .env.deploy.example .env
+docker compose pull
+docker compose up -d
+```
+
 ## 说明
 
 - 当前是双镜像发布：`web` 和 `api` 分开推送
-- 前端 `NEXT_PUBLIC_API_BASE_URL` 为构建时变量，变更后需要重新构建 web 镜像
+- 当前前端默认走同域 `/api`，由 Nginx 反向代理到 API
 - 如果后续接入管理后台，建议继续沿用同一套发布方式，单独增加 `admin` 镜像即可

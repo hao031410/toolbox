@@ -10,8 +10,6 @@ RUN npm ci
 FROM node:22-alpine AS builder
 WORKDIR /app
 
-ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:3001
-ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
 
 COPY --from=deps /app/node_modules ./node_modules
@@ -43,4 +41,3 @@ COPY --from=builder /app/apps/web/next.config.ts ./apps/web/next.config.ts
 EXPOSE 3000
 
 CMD ["npm", "run", "start", "--workspace", "web", "--", "-H", "0.0.0.0", "-p", "3000"]
-

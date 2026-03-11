@@ -1,0 +1,29 @@
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: toolbox-nginx
+    depends_on:
+      - web
+      - api
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped
+
+  web:
+    image: ${DOCKER_REGISTRY}/${WEB_IMAGE}:latest
+    container_name: toolbox-web
+    restart: unless-stopped
+
+  api:
+    image: ${DOCKER_REGISTRY}/${API_IMAGE}:latest
+    container_name: toolbox-api
+    environment:
+      PORT: 3001
+      PERSISTENCE_DRIVER: ${PERSISTENCE_DRIVER:-json}
+      JSON_STORAGE_DIR: ${JSON_STORAGE_DIR:-./temp/data}
+      DATABASE_URL: ${DATABASE_URL:-}
+    volumes:
+      - ./data:/app/temp/data
+    restart: unless-stopped
