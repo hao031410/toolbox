@@ -9,6 +9,18 @@ export class ToolsService {
         title: '日常工具',
         tools: [
           {
+            key: 'lan-transfer',
+            name: '局域网文件传输',
+            description: '同一局域网内直连传文件，手机电脑免中转。',
+            status: 'available',
+          },
+          {
+            key: 'ocr-invoice',
+            name: '发票 OCR 汇总',
+            description: '批量识别 PDF、图片、ZIP 并汇总导出。',
+            status: 'available',
+          },
+          {
             key: 'calculator',
             name: '计算器',
             description: '表达式计算、括号、小数、历史记录。',

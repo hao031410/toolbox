@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 const storageKey = 'toolbox-theme';
 
-function resolveTheme(preference: string) {
+function resolveTheme(preference: string | null) {
   if (preference === 'dark' || preference === 'light') {
     return preference;
   }
@@ -14,18 +14,39 @@ function resolveTheme(preference: string) {
     : 'light';
 }
 
+function applyTheme(theme: 'light' | 'dark') {
+  document.documentElement.dataset.theme = theme;
+}
+
 export function ThemeToggle() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window === 'undefined') {
       return 'light';
     }
 
-    const saved = window.localStorage.getItem(storageKey) || 'system';
-    return resolveTheme(saved) as 'light' | 'dark';
+    const rootTheme = document.documentElement.dataset.theme;
+    return (rootTheme === 'dark' || rootTheme === 'light'
+      ? rootTheme
+      : resolveTheme(window.localStorage.getItem(storageKey))) as 'light' | 'dark';
   });
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = () => {
+      const saved = window.localStorage.getItem(storageKey);
+
+      if (saved === 'dark' || saved === 'light') {
+        return;
+      }
+
+      const systemTheme = resolveTheme(saved) as 'light' | 'dark';
+      applyTheme(systemTheme);
+      setTheme(systemTheme);
+    };
+
+    applyTheme(theme);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
   }, [theme]);
 
   return (
@@ -36,7 +57,7 @@ export function ThemeToggle() {
       onClick={() => {
         const next = theme === 'dark' ? 'light' : 'dark';
         window.localStorage.setItem(storageKey, next);
-        document.documentElement.dataset.theme = next;
+        applyTheme(next);
         setTheme(next);
       }}
     />

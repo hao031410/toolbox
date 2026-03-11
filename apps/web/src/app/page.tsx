@@ -24,6 +24,37 @@ const toolGroups: ToolGroup[] = [
     title: '日常工具',
     tools: [
       {
+        key: 'lan-transfer',
+        name: '局域网文件传输',
+        description: '同一局域网内直连传文件，手机电脑免中转。',
+        href: '/lan-transfer',
+        icon: (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M7 7h.01" />
+            <path d="M17 7h.01" />
+            <path d="M7 17h.01" />
+            <path d="M17 17h.01" />
+            <rect x="4" y="4" width="16" height="16" rx="3" />
+            <path d="M8.5 12h7" />
+            <path d="m13 9 2.5 3-2.5 3" />
+          </svg>
+        ),
+      },
+      {
+        key: 'ocr-invoice',
+        name: '发票 OCR 汇总',
+        description: '批量识别 PDF、图片、ZIP 并汇总导出。',
+        href: '/ocr-invoice',
+        icon: (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="4" y="4" width="16" height="16" rx="3" />
+            <path d="M8 9h8" />
+            <path d="M8 13h4" />
+            <path d="M8 17h8" />
+          </svg>
+        ),
+      },
+      {
         key: 'calculator',
         name: '计算器',
         description: '表达式计算、括号、小数、历史记录。',
@@ -147,6 +178,50 @@ export default function HomePage() {
       .filter((group) => group.tools.length > 0);
   }, [keyword]);
 
+  const renderToolCard = (tool: ToolItem) => {
+    const isAvailable = Boolean(tool.href);
+    const cardClassName = isAvailable
+      ? 'tool-card'
+      : 'tool-card tool-card-disabled';
+    const iconClassName = isAvailable ? 'tool-icon' : 'tool-icon tool-icon-disabled';
+
+    const content = (
+      <>
+        <div className="tool-card-header">
+          <span className={iconClassName} aria-hidden="true">
+            {tool.icon}
+          </span>
+          {!isAvailable ? (
+            <span className="tool-status-badge" aria-label={`${tool.name}开发中`}>
+              开发中
+            </span>
+          ) : null}
+        </div>
+        <h3 className="tool-card-title">{tool.name}</h3>
+        <p className="tool-card-desc">{tool.description}</p>
+      </>
+    );
+
+    if (isAvailable) {
+      return (
+        <Link
+          key={tool.key}
+          className={cardClassName}
+          href={tool.href!}
+          aria-label={`进入${tool.name}`}
+        >
+          {content}
+        </Link>
+      );
+    }
+
+    return (
+      <div key={tool.key} className={cardClassName}>
+        {content}
+      </div>
+    );
+  };
+
   return (
     <div className="site-shell">
       <header className="site-header fade-up">
@@ -207,36 +282,7 @@ export default function HomePage() {
                 <h2>{group.title}</h2>
                 <span className="tool-count">{group.tools.length}</span>
               </div>
-              <div className="tool-list">
-                {group.tools.map((tool) =>
-                  tool.href ? (
-                    <Link
-                      key={tool.key}
-                      className="tool-card"
-                      href={tool.href}
-                      aria-label={`进入${tool.name}`}
-                    >
-                      <div className="tool-card-header">
-                        <span className="tool-icon" aria-hidden="true">
-                          {tool.icon}
-                        </span>
-                      </div>
-                      <h3 className="tool-card-title">{tool.name}</h3>
-                      <p className="tool-card-desc">{tool.description}</p>
-                    </Link>
-                  ) : (
-                    <article key={tool.key} className="tool-card tool-card-soon">
-                      <div className="tool-card-header">
-                        <span className="coming-icon" aria-hidden="true">
-                          {tool.icon}
-                        </span>
-                      </div>
-                      <h3 className="tool-card-title">{tool.name}</h3>
-                      <p className="tool-card-desc">{tool.description}</p>
-                    </article>
-                  ),
-                )}
-              </div>
+              <div className="tool-list">{group.tools.map(renderToolCard)}</div>
             </section>
           ))}
         </section>

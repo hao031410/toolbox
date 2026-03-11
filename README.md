@@ -8,6 +8,7 @@
 - 表达式计算器
 - 历史记录持久化
 - 持久化双实现：本地 JSON / 远程数据库
+- 发票 OCR 上传与 PDF/图片识别链路
 - `master` 自动构建并推送 Docker 镜像
 - `docker-compose` 双服务部署
 
@@ -61,11 +62,25 @@ npm run dev
   - `json` 或 `database`
 - `JSON_STORAGE_DIR`
 - `DATABASE_URL`
+- `OCR_ENGINE`
+  - `disabled` 或 `siliconflow`
+- `SILICON_FLOW_API_KEY`
+- `SILICON_FLOW_BASE_URL`
+- `SILICON_FLOW_OCR_MODEL`
 
 默认建议：
 
 - 本地演示：`PERSISTENCE_DRIVER=json`
 - 生产环境：`PERSISTENCE_DRIVER=database`
+- 未接云端 OCR 时：`OCR_ENGINE=disabled`
+- 接入硅基流动 OCR 时：
+
+```env
+OCR_ENGINE=siliconflow
+SILICON_FLOW_BASE_URL=https://api.siliconflow.cn/v1
+SILICON_FLOW_OCR_MODEL=deepseek-ai/DeepSeek-OCR
+SILICON_FLOW_API_KEY=你的密钥
+```
 
 ## 构建检查
 
