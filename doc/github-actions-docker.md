@@ -96,15 +96,13 @@ docker run --rm -p 3000:3000 toolbox-web:local
 ## docker-compose 部署
 
 - Compose 文件：[docker-compose.yml](/Users/jsh/project/tool/toolbox/codex_v1/docker-compose.yml)
-- Nginx 配置：[docker/nginx.conf](/Users/jsh/project/tool/toolbox/codex_v1/docker/nginx.conf)
 - 环境变量示例：[.env.deploy.example](/Users/jsh/project/tool/toolbox/codex_v1/.env.deploy.example)
 
 当前部署方式：
 
-- `nginx` 对外暴露 `80`
-- `/` 转发到 `web`
-- `/api/` 转发到 `api`
-- 前端默认直接请求同域 `/api`
+- `web` 直接暴露 `3000`
+- `api` 直接暴露 `3001`
+- 服务器侧是否加 Nginx，由部署环境自行决定
 
 启动前：
 
@@ -117,5 +115,5 @@ docker compose up -d
 ## 说明
 
 - 当前是双镜像发布：`web` 和 `api` 分开推送
-- 当前前端默认走同域 `/api`，由 Nginx 反向代理到 API
+- 当前前端默认走同域 `/api`，如果不做同域反代，需要显式改回 API 地址配置
 - 如果后续接入管理后台，建议继续沿用同一套发布方式，单独增加 `admin` 镜像即可

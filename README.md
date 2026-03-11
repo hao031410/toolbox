@@ -9,7 +9,7 @@
 - 历史记录持久化
 - 持久化双实现：本地 JSON / 远程数据库
 - `master` 自动构建并推送 Docker 镜像
-- `docker-compose + nginx` 同域部署
+- `docker-compose` 双服务部署
 
 ## 技术栈
 
@@ -61,7 +61,6 @@ npm run dev
   - `json` 或 `database`
 - `JSON_STORAGE_DIR`
 - `DATABASE_URL`
-- `NEXT_PUBLIC_API_BASE_URL`
 
 默认建议：
 
@@ -106,15 +105,13 @@ npm run build
 部署文件：
 
 - [docker-compose.yml](/Users/jsh/project/tool/toolbox/codex_v1/docker-compose.yml)
-- [docker/nginx.conf](/Users/jsh/project/tool/toolbox/codex_v1/docker/nginx.conf)
 - [.env.deploy.example](/Users/jsh/project/tool/toolbox/codex_v1/.env.deploy.example)
 
 当前默认部署方式：
 
-- Nginx 对外提供服务
-- `/` 转发到 Next.js
-- `/api/` 转发到 NestJS
-- 前端默认请求同域 `/api`
+- Web 直接暴露 `3000`
+- API 直接暴露 `3001`
+- 反向代理由服务器侧自行处理
 
 ## 说明
 
