@@ -1,604 +1,326 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import type { ChangeEvent, DragEvent } from 'react';
 import type { WorkBook } from 'xlsx';
 import { ThemeToggle } from '@/components/theme-toggle';
 import {
   OcrInvoiceTaskResult,
+  OcrInvoiceTaskFile,
   uploadOcrInvoiceTask,
 } from '@/lib/toolbox-api';
 
-type SummaryCard = {
-  label: string;
-  value: string;
-  hint: string;
-  tone?: 'default' | 'warning';
-};
+type WorkflowPhase = 'idle' | 'uploading' | 'done';
 
-type CompanySummary = {
-  name: string;
-  invoices: number;
-  amount: string;
-};
-
-type CategorySummary = {
-  name: string;
-  invoices: number;
-  amount: string;
-  confidence: string;
-};
-
-type InvoiceItem = {
+type FileWithPreview = {
+  file: File;
   id: string;
-  fileName: string;
-  company: string;
-  date: string;
-  amount: string;
-  category: string;
-  status: '完成' | '需复核' | '识别失败';
-  reason: string;
-  invoiceType: string;
-  invoiceNo: string;
-  taxAmount: string;
-  totalAmount: string;
-  ocrText: string;
+  status: 'pending' | 'success' | 'error';
+  amount?: string;
 };
 
-const summaryCards: SummaryCard[] = [
-  { label: '票据总数', value: '18', hint: '22 个文件中识别出 18 张票据。' },
-  { label: '总金额', value: '¥12,486.20', hint: '已排除失败文件。' },
-  { label: '开票公司数', value: '7', hint: '公司名归一后统计。' },
-  { label: '需复核数', value: '3', hint: '需人工确认。', tone: 'warning' },
-];
-
-const companySummary: CompanySummary[] = [
-  { name: '杭州西湖餐饮管理有限公司', invoices: 5, amount: '¥2,368.00' },
-  { name: '中国东方航空股份有限公司', invoices: 3, amount: '¥4,780.00' },
-  { name: '滴滴出行科技有限公司', invoices: 4, amount: '¥326.50' },
-  { name: '上海锦江之星旅馆有限公司', invoices: 2, amount: '¥1,280.00' },
-  { name: '京东五星电器集团有限公司', invoices: 2, amount: '¥2,930.00' },
-];
-
-const categorySummary: CategorySummary[] = [
-  { name: '交通', invoices: 7, amount: '¥5,106.50', confidence: '92%' },
-  { name: '餐饮', invoices: 5, amount: '¥2,368.00', confidence: '95%' },
-  { name: '住宿', invoices: 2, amount: '¥1,280.00', confidence: '94%' },
-  { name: '办公', invoices: 2, amount: '¥2,930.00', confidence: '88%' },
-  { name: '其他', invoices: 2, amount: '¥801.70', confidence: '61%' },
-];
-
-const invoices: InvoiceItem[] = [
-  {
-    id: 'inv-001',
-    fileName: '2026-03-餐饮-01.pdf',
-    company: '杭州西湖餐饮管理有限公司',
-    date: '2026-03-02',
-    amount: '¥486.00',
-    category: '餐饮',
-    status: '完成',
-    reason: '销售方名称与商品明细均命中餐饮规则。',
-    invoiceType: '电子发票',
-    invoiceNo: '420001234567',
-    taxAmount: '¥28.31',
-    totalAmount: '¥486.00',
-    ocrText: '餐饮服务费 午餐消费 合计486.00 销售方 杭州西湖餐饮管理有限公司',
-  },
-  {
-    id: 'inv-002',
-    fileName: '2026-03-机票-01.pdf',
-    company: '中国东方航空股份有限公司',
-    date: '2026-03-03',
-    amount: '¥1,860.00',
-    category: '交通',
-    status: '完成',
-    reason: '票据类型识别为航空运输电子客票行程单。',
-    invoiceType: '电子行程单',
-    invoiceNo: '781204928341',
-    taxAmount: '¥0.00',
-    totalAmount: '¥1,860.00',
-    ocrText: '旅客运输服务 电子客票行程单 中国东方航空 杭州-北京 1860.00',
-  },
-  {
-    id: 'inv-003',
-    fileName: '2026-03-打车-02.jpg',
-    company: '滴滴出行科技有限公司',
-    date: '2026-03-04',
-    amount: '¥42.50',
-    category: '交通',
-    status: '完成',
-    reason: '平台名和服务明细命中打车规则。',
-    invoiceType: '电子发票',
-    invoiceNo: '033894284921',
-    taxAmount: '¥1.24',
-    totalAmount: '¥42.50',
-    ocrText: '滴滴出行 出租车客运服务 42.50 销售方 滴滴出行科技有限公司',
-  },
-  {
-    id: 'inv-004',
-    fileName: '2026-03-办公用品-01.pdf',
-    company: '京东五星电器集团有限公司',
-    date: '2026-03-05',
-    amount: '¥1,480.00',
-    category: '办公',
-    status: '完成',
-    reason: '商品明细含办公耗材、打印纸、墨盒。',
-    invoiceType: '电子发票',
-    invoiceNo: '420001238866',
-    taxAmount: '¥85.84',
-    totalAmount: '¥1,480.00',
-    ocrText: '办公用品 打印纸 墨盒 销售方 京东五星电器集团有限公司 合计1480.00',
-  },
-  {
-    id: 'inv-005',
-    fileName: '2026-03-住宿-01.pdf',
-    company: '上海锦江之星旅馆有限公司',
-    date: '2026-03-06',
-    amount: '¥640.00',
-    category: '住宿',
-    status: '完成',
-    reason: '酒店住宿服务识别明确。',
-    invoiceType: '电子发票',
-    invoiceNo: '510024982341',
-    taxAmount: '¥37.28',
-    totalAmount: '¥640.00',
-    ocrText: '住宿服务 房费 上海锦江之星旅馆有限公司 合计640.00',
-  },
-  {
-    id: 'inv-006',
-    fileName: '2026-03-未知-01.png',
-    company: '杭州城市服务有限公司',
-    date: '2026-03-07',
-    amount: '¥301.70',
-    category: '其他',
-    status: '需复核',
-    reason: '销售方可识别，但费用类别候选冲突，模型置信度 58%。',
-    invoiceType: '电子发票',
-    invoiceNo: '510024982999',
-    taxAmount: '¥17.58',
-    totalAmount: '¥301.70',
-    ocrText: '城市服务费 综合保障服务 杭州城市服务有限公司 301.70',
-  },
-  {
-    id: 'inv-007',
-    fileName: '2026-03-模糊扫描-01.jpg',
-    company: '未识别',
-    date: '2026-03-08',
-    amount: '¥0.00',
-    category: '其他',
-    status: '识别失败',
-    reason: '原图模糊且关键信息缺失，建议人工补录。',
-    invoiceType: '扫描件',
-    invoiceNo: '--',
-    taxAmount: '¥0.00',
-    totalAmount: '¥0.00',
-    ocrText: 'OCR 结果置信度过低，未提取到有效金额。',
-  },
-];
-
-function buildKindSummary(taskResult: OcrInvoiceTaskResult): CompanySummary[] {
-  const groups = new Map<string, { invoices: number; amount: string }>();
-
-  taskResult.sourceFiles.forEach((item) => {
-    const label =
-      item.kind === 'pdf'
-        ? 'PDF 文件'
-        : item.kind === 'image'
-          ? '图片文件'
-          : '忽略文件';
-    const next = groups.get(label) ?? {
-      invoices: 0,
-      amount: item.kind === 'unsupported' ? '已忽略' : '待 OCR',
-    };
-    next.invoices += 1;
-    groups.set(label, next);
-  });
-
-  return Array.from(groups.entries()).map(([name, value]) => ({
-    name,
-    invoices: value.invoices,
-    amount: value.amount,
-  }));
-}
-
-function buildExtensionSummary(taskResult: OcrInvoiceTaskResult): CategorySummary[] {
-  const groups = new Map<string, number>();
-
-  taskResult.sourceFiles.forEach((item) => {
-    const label = item.extension ? `.${item.extension}` : '无后缀';
-    groups.set(label, (groups.get(label) ?? 0) + 1);
-  });
-
-  return Array.from(groups.entries()).map(([name, count]) => ({
-    name,
-    invoices: count,
-    amount: count > 0 ? '已接收' : '--',
-    confidence: `${Math.round((count / taskResult.summary.totalFiles) * 100)}%`,
-  }));
-}
-
-function formatFileSize(size: number) {
+function formatFileSize(size: number): string {
   if (size >= 1024 * 1024) {
     return `${(size / (1024 * 1024)).toFixed(2)} MB`;
   }
   if (size >= 1024) {
-    return `${Math.round(size / 1024)} KB`;
+    return `${(size / 1024).toFixed(1)} KB`;
   }
   return `${size} B`;
 }
 
-function formatCurrency(value?: string) {
-  if (!value) {
-    return '--';
-  }
-
+function formatCurrency(value?: string | number): string {
+  if (!value) return '--';
   return `¥${value}`;
 }
 
-function buildExtractedCompanySummary(taskResult: OcrInvoiceTaskResult): CompanySummary[] {
-  const groups = new Map<string, { invoices: number; amount: number }>();
+function getFileExtension(filename: string): string {
+  return filename.split('.').pop()?.toUpperCase() || 'FILE';
+}
 
-  taskResult.sourceFiles.forEach((item) => {
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// ========== 导出工具函数 ==========
+
+function buildDetailRows(
+  sourceFiles: OcrInvoiceTaskFile[],
+): string[][] {
+  return [
+    ['文件名', '发票号', '开票公司', '购买方', '日期', '分类', '税额', '价税合计', '状态'],
+    ...sourceFiles.map((item) => [
+      item.name,
+      item.invoice?.invoiceNo || '--',
+      item.invoice?.sellerName || '--',
+      item.invoice?.buyerName || '--',
+      item.invoice?.issueDate || '--',
+      item.invoice?.category || '--',
+      formatCurrency(item.invoice?.taxAmount),
+      formatCurrency(item.invoice?.totalAmount),
+      item.status === 'parsed' ? '成功' : item.status === 'failed' ? '失败' : '已忽略',
+    ]),
+  ];
+}
+
+function buildCompanySummaryRows(sourceFiles: OcrInvoiceTaskFile[]): string[][] {
+  const groups = new Map<string, { count: number; amount: number }>();
+
+  sourceFiles.forEach((item) => {
     const name = item.invoice?.sellerName;
-
-    if (!name) {
-      return;
-    }
-
-    const totalAmount = Number(item.invoice?.totalAmount ?? 0);
-    const current = groups.get(name) ?? { invoices: 0, amount: 0 };
-    current.invoices += 1;
-    current.amount += Number.isFinite(totalAmount) ? totalAmount : 0;
+    if (!name) return;
+    const current = groups.get(name) || { count: 0, amount: 0 };
+    current.count += 1;
+    current.amount += Number(item.invoice?.totalAmount) || 0;
     groups.set(name, current);
   });
 
-  if (!groups.size) {
-    return buildKindSummary(taskResult);
-  }
-
-  return Array.from(groups.entries()).map(([name, value]) => ({
-    name,
-    invoices: value.invoices,
-    amount: `¥${value.amount.toFixed(2)}`,
-  }));
+  return [
+    ['开票公司', '数量', '金额'],
+    ...Array.from(groups.entries()).map(([name, data]) => [
+      name,
+      String(data.count),
+      formatCurrency(data.amount.toFixed(2)),
+    ]),
+  ];
 }
 
-function buildExtractedCategorySummary(taskResult: OcrInvoiceTaskResult): CategorySummary[] {
-  const groups = new Map<string, { invoices: number; amount: number }>();
+function buildCategorySummaryRows(sourceFiles: OcrInvoiceTaskFile[]): string[][] {
+  const groups = new Map<string, { count: number; amount: number }>();
 
-  taskResult.sourceFiles.forEach((item) => {
+  sourceFiles.forEach((item) => {
     const category = item.invoice?.category;
-
-    if (!category) {
-      return;
-    }
-
-    const totalAmount = Number(item.invoice?.totalAmount ?? 0);
-    const current = groups.get(category) ?? { invoices: 0, amount: 0 };
-    current.invoices += 1;
-    current.amount += Number.isFinite(totalAmount) ? totalAmount : 0;
+    if (!category) return;
+    const current = groups.get(category) || { count: 0, amount: 0 };
+    current.count += 1;
+    current.amount += Number(item.invoice?.totalAmount) || 0;
     groups.set(category, current);
   });
 
-  if (!groups.size) {
-    return buildExtensionSummary(taskResult);
+  return [
+    ['分类', '数量', '金额', '说明'],
+    ...Array.from(groups.entries()).map(([name, data]) => [
+      name,
+      String(data.count),
+      formatCurrency(data.amount.toFixed(2)),
+      '规则分类',
+    ]),
+  ];
+}
+
+function escapeCsvCell(value: string): string {
+  return `"${value.replace(/"/g, '""')}"`;
+}
+
+function buildCsv(rows: string[][]): string {
+  return rows.map((row) => row.map(escapeCsvCell).join(',')).join('\n');
+}
+
+function triggerDownload(filename: string, content: string | ArrayBuffer, type: 'text' | 'binary'): void {
+  const blob = type === 'text'
+    ? new Blob([`\uFEFF${content}`], { type: 'text/csv;charset=utf-8;' })
+    : new Blob([content], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function exportToExcel(sourceFiles: OcrInvoiceTaskFile[]): Promise<void> {
+  const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  const detailRows = buildDetailRows(sourceFiles);
+  const companyRows = buildCompanySummaryRows(sourceFiles);
+  const categoryRows = buildCategorySummaryRows(sourceFiles);
+
+  try {
+    const xlsx = await import('xlsx');
+    const workbook: WorkBook = xlsx.utils.book_new();
+
+    xlsx.utils.book_append_sheet(workbook, xlsx.utils.aoa_to_sheet(detailRows), '票据明细');
+    xlsx.utils.book_append_sheet(workbook, xlsx.utils.aoa_to_sheet(companyRows), '公司汇总');
+    xlsx.utils.book_append_sheet(workbook, xlsx.utils.aoa_to_sheet(categoryRows), '分类汇总');
+
+    const buffer = xlsx.write(workbook, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
+    triggerDownload(`invoice-${timestamp}.xlsx`, buffer, 'binary');
+  } catch {
+    triggerDownload(`invoice-${timestamp}.csv`, buildCsv(detailRows), 'text');
   }
-
-  return Array.from(groups.entries()).map(([name, value]) => ({
-    name,
-    invoices: value.invoices,
-    amount: `¥${value.amount.toFixed(2)}`,
-    confidence: '规则',
-  }));
 }
 
-function buildDetailRows(
-  filteredInvoices: InvoiceItem[],
-  taskResult: OcrInvoiceTaskResult | null,
-) {
-  return [
-    ['文件名', '销售方', '购买方', '开票日期', '发票类型', '发票号码', '分类', '税额', '价税合计', '状态', '说明'],
-    ...filteredInvoices.map((item) => [
-      item.fileName,
-      item.company,
-      taskResult?.sourceFiles.find((source) => source.id === item.id)?.invoice?.buyerName ?? '--',
-      item.date,
-      item.invoiceType,
-      item.invoiceNo,
-      item.category,
-      item.taxAmount,
-      item.totalAmount,
-      item.status,
-      item.reason,
-    ]),
-  ];
-}
-
-function buildCompanyRows(liveCompanySummary: CompanySummary[]) {
-  return [
-    ['开票公司', '票据数', '金额'],
-    ...liveCompanySummary.map((item) => [
-      item.name,
-      String(item.invoices),
-      item.amount,
-    ]),
-  ];
-}
-
-function buildCategoryRows(liveCategorySummary: CategorySummary[]) {
-  return [
-    ['分类', '票据数', '金额', '说明'],
-    ...liveCategorySummary.map((item) => [
-      item.name,
-      String(item.invoices),
-      item.amount,
-      item.confidence,
-    ]),
-  ];
-}
-
-function escapeCsvCell(value: string) {
-  const normalized = value.replace(/"/g, '""');
-  return `"${normalized}"`;
-}
-
-function buildCsv(rows: string[][]) {
-  return rows.map((row) => row.map((cell) => escapeCsvCell(cell)).join(',')).join('\n');
-}
-
-function triggerTextDownload(fileName: string, content: string) {
-  const blob = new Blob([`\uFEFF${content}`], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
-
-function triggerBinaryDownload(fileName: string, content: ArrayBuffer) {
-  const blob = new Blob([content], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
+// ========== 主组件 ==========
 
 export default function OcrInvoicePage() {
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFiles, setSelectedFiles] = useState<FileWithPreview[]>([]);
   const [taskResult, setTaskResult] = useState<OcrInvoiceTaskResult | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadError, setUploadError] = useState('');
-  const [selectedCompany, setSelectedCompany] = useState<string>('全部公司');
-  const [selectedCategory, setSelectedCategory] = useState<string>('全部分类');
-  const [onlyReview, setOnlyReview] = useState(false);
-  const [search, setSearch] = useState('');
-  const [activeId, setActiveId] = useState(invoices[0]?.id ?? '');
+  const [phase, setPhase] = useState<WorkflowPhase>('idle');
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [expandedFileId, setExpandedFileId] = useState<string | null>(null);
 
-  const liveInvoices = useMemo(() => {
-    if (!taskResult) {
-      return invoices;
-    }
+  // ========== 计算属性 ==========
 
-    return taskResult.sourceFiles.map((item) => ({
-      id: item.id,
-      fileName: item.name,
-      company:
-        item.status === 'parsed'
-          ? item.invoice?.sellerName || item.invoice?.buyerName || '文本已提取'
-          : item.kind === 'unsupported'
-            ? '不支持文件'
-            : '待 OCR 识别',
-      date: item.invoice?.issueDate || '--',
-      amount: formatCurrency(item.invoice?.totalAmount),
-      category:
-        item.status === 'parsed'
-          ? item.invoice?.category || '待分类'
-          : item.kind === 'unsupported'
-            ? '已忽略'
-            : '待分类',
-      status:
-        item.status === 'parsed'
-          ? ('完成' as const)
-          : item.status === 'ignored'
-            ? ('识别失败' as const)
-            : item.status === 'failed'
-              ? ('识别失败' as const)
-              : ('需复核' as const),
-      reason:
-        item.status === 'parsed' && item.extractedTextPreview
-          ? `已通过 ${item.ocrProvider ?? 'OCR'} 完成识别${item.invoice?.sellerName ? `，销售方：${item.invoice.sellerName}` : ''}。`
-          : item.note,
-      invoiceType: item.invoice?.invoiceType
-        ? `${item.invoice.invoiceType}${item.ocrModel ? ` / ${item.ocrModel}` : ''}`
-        : item.kind === 'pdf'
-          ? `PDF${item.pageCount ? ` / ${item.pageCount} 页` : ''}${item.ocrModel ? ` / ${item.ocrModel}` : ''}`
-          : item.kind === 'image'
-            ? `图片${item.ocrModel ? ` / ${item.ocrModel}` : ''}`
-            : '压缩包内文件',
-      invoiceNo: item.invoice?.invoiceNo || '--',
-      taxAmount: formatCurrency(item.invoice?.taxAmount),
-      totalAmount:
-        item.invoice?.totalAmount
-          ? formatCurrency(item.invoice.totalAmount)
-          : item.status === 'parsed' && item.extractedTextPreview
-            ? `${item.extractedTextPreview.length} 字`
-          : item.size > 0
-            ? formatFileSize(item.size)
-            : '--',
-      ocrText: item.extractedTextPreview || item.relativePath,
-    }));
+  const totalFileSize = useMemo(() => {
+    return selectedFiles.reduce((sum, f) => sum + f.file.size, 0);
+  }, [selectedFiles]);
+
+  const summaryStats = useMemo(() => {
+    if (!taskResult) return null;
+
+    const parsedFiles = taskResult.sourceFiles.filter((f) => f.status === 'parsed');
+    const failedFiles = taskResult.sourceFiles.filter((f) => f.status === 'failed' || f.status === 'ignored');
+    const reviewFiles = taskResult.sourceFiles.filter((f) => f.duplicate);
+
+    const totalAmount = parsedFiles.reduce((sum, f) => sum + (Number(f.invoice?.totalAmount) || 0), 0);
+    const companyCount = new Set(parsedFiles.map((f) => f.invoice?.sellerName).filter(Boolean)).size;
+
+    return {
+      totalFiles: taskResult.summary.totalFiles,
+      totalAmount,
+      companyCount,
+      reviewCount: reviewFiles.length + failedFiles.length,
+      failedFiles,
+    };
   }, [taskResult]);
 
-  const activeItem = liveInvoices.find((item) => item.id === activeId) ?? liveInvoices[0];
+  const companySummary = useMemo(() => {
+    if (!taskResult) return [];
 
-  const liveSummaryCards = taskResult
-    ? (() => {
-        const parsedItems = taskResult.sourceFiles.filter(
-          (item) => item.status === 'parsed',
-        );
-        const reviewCount = taskResult.sourceFiles.filter(
-          (item) => item.status !== 'parsed',
-        ).length;
-        const companyCount = new Set(
-          parsedItems
-            .map((item) => item.invoice?.sellerName)
-            .filter(Boolean),
-        ).size;
-        const totalAmount = parsedItems.reduce((sum, item) => {
-          const value = Number(item.invoice?.totalAmount ?? 0);
-          return sum + (Number.isFinite(value) ? value : 0);
-        }, 0);
-
-        return [
-          {
-            label: '票据总数',
-            value: String(taskResult.summary.totalFiles),
-            hint: `来自 ${taskResult.uploadedFileName}`,
-          },
-          {
-            label: '总金额',
-            value: totalAmount > 0 ? `¥${totalAmount.toFixed(2)}` : '--',
-            hint: '已按已解析票据统计。',
-          },
-          {
-            label: '开票公司数',
-            value: String(companyCount),
-            hint: '按销售方去重。',
-          },
-          {
-            label: '需复核数',
-            value: String(reviewCount),
-            hint: '待 OCR 或识别失败。',
-            tone: 'warning' as const,
-          },
-        ];
-      })()
-    : summaryCards;
-
-  const liveCompanySummary = taskResult
-    ? buildExtractedCompanySummary(taskResult)
-    : companySummary;
-
-  const liveCategorySummary = taskResult
-    ? buildExtractedCategorySummary(taskResult)
-    : categorySummary;
-
-  const companyOptions = useMemo(() => {
-    return Array.from(
-      new Set(
-        liveInvoices
-          .map((item) => item.company)
-          .filter((item) => item && item !== '不支持文件' && item !== '待 OCR 识别'),
-      ),
-    );
-  }, [liveInvoices]);
-
-  const categoryOptions = useMemo(() => {
-    return Array.from(
-      new Set(
-        liveInvoices
-          .map((item) => item.category)
-          .filter((item) => item && item !== '已忽略' && item !== '待分类'),
-      ),
-    );
-  }, [liveInvoices]);
-
-  const filteredInvoices = useMemo(() => {
-    return liveInvoices.filter((item) => {
-      if (selectedCompany !== '全部公司' && item.company !== selectedCompany) {
-        return false;
-      }
-      if (selectedCategory !== '全部分类' && item.category !== selectedCategory) {
-        return false;
-      }
-      if (onlyReview && item.status === '完成') {
-        return false;
-      }
-      if (!search.trim()) {
-        return true;
-      }
-
-      const keyword = search.trim().toLowerCase();
-      return `${item.fileName} ${item.company} ${item.category} ${item.reason}`
-        .toLowerCase()
-        .includes(keyword);
+    const groups = new Map<string, { count: number; amount: number }>();
+    taskResult.sourceFiles.forEach((item) => {
+      const name = item.invoice?.sellerName;
+      if (!name) return;
+      const current = groups.get(name) || { count: 0, amount: 0 };
+      current.count += 1;
+      current.amount += Number(item.invoice?.totalAmount) || 0;
+      groups.set(name, current);
     });
-  }, [liveInvoices, onlyReview, search, selectedCategory, selectedCompany]);
 
-  const handleFileSelect = async (file: File | undefined) => {
-    if (!file) {
-      return;
+    return Array.from(groups.entries())
+      .map(([name, data]) => ({ name, ...data }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [taskResult]);
+
+  const categorySummary = useMemo(() => {
+    if (!taskResult) return [];
+
+    const groups = new Map<string, { count: number; amount: number }>();
+    taskResult.sourceFiles.forEach((item) => {
+      const category = item.invoice?.category;
+      if (!category) return;
+      const current = groups.get(category) || { count: 0, amount: 0 };
+      current.count += 1;
+      current.amount += Number(item.invoice?.totalAmount) || 0;
+      groups.set(category, current);
+    });
+
+    return Array.from(groups.entries())
+      .map(([name, data]) => ({ name, ...data }))
+      .sort((a, b) => b.count - a.count);
+  }, [taskResult]);
+
+  // ========== 事件处理 ==========
+
+  const handleFileSelect = useCallback((files: FileList | null) => {
+    if (!files) return;
+
+    const newFiles: FileWithPreview[] = Array.from(files)
+      .filter((f) => {
+        const ext = f.name.split('.').pop()?.toLowerCase();
+        return ['zip', 'pdf', 'png', 'jpg', 'jpeg'].includes(ext || '');
+      })
+      .map((f) => ({
+        file: f,
+        id: `${f.name}-${f.size}-${Date.now()}`,
+        status: 'pending' as const,
+      }));
+
+    if (newFiles.length > 0) {
+      setSelectedFiles((prev) => [...prev, ...newFiles]);
+      setError(null);
     }
+  }, []);
 
-    setIsUploading(true);
-    setUploadError('');
+  const handleDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.currentTarget.classList.remove('is-drag-over');
+    handleFileSelect(e.dataTransfer.files);
+  }, [handleFileSelect]);
+
+  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.currentTarget.classList.add('is-drag-over');
+  }, []);
+
+  const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.currentTarget.classList.remove('is-drag-over');
+  }, []);
+
+  const handleRemoveFile = useCallback((id: string) => {
+    setSelectedFiles((prev) => prev.filter((f) => f.id !== id));
+  }, []);
+
+  const handleClearFiles = useCallback(() => {
+    setSelectedFiles([]);
+    setError(null);
+  }, []);
+
+  const handleStartAnalysis = useCallback(async () => {
+    if (selectedFiles.length === 0 || phase === 'uploading') return;
+
+    setPhase('uploading');
+    setProgress(0);
+    setError(null);
 
     try {
+      // 模拟进度
+      const progressInterval = setInterval(() => {
+        setProgress((p) => Math.min(p + Math.random() * 8, 85));
+      }, 150);
+
+      // 上传第一个文件（后端目前只支持单文件）
+      const file = selectedFiles[0].file;
       const result = await uploadOcrInvoiceTask(file);
+
+      clearInterval(progressInterval);
+      setProgress(100);
+
+      await sleep(200);
+
       setTaskResult(result);
-      setActiveId(result.sourceFiles[0]?.id ?? '');
-      setSelectedCompany('全部公司');
-      setSelectedCategory('全部分类');
-      setOnlyReview(false);
-      setSearch('');
-    } catch (error) {
-      setUploadError(error instanceof Error ? error.message : '上传失败，请重试。');
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      setPhase('done');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '分析失败，请重试');
+      setPhase('idle');
+      setProgress(0);
     }
-  };
+  }, [selectedFiles, phase]);
 
-  const handleExport = async () => {
-    const timeTag = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-    const detailRows = buildDetailRows(filteredInvoices, taskResult);
-    const companyRows = buildCompanyRows(liveCompanySummary);
-    const categoryRows = buildCategoryRows(liveCategorySummary);
+  const handleReupload = useCallback(() => {
+    setPhase('idle');
+    setTaskResult(null);
+    setProgress(0);
+    setSelectedFiles([]);
+    setError(null);
+    setExpandedFileId(null);
+  }, []);
 
-    try {
-      const xlsx = await import('xlsx');
-      const workbook: WorkBook = xlsx.utils.book_new();
+  const handleExport = useCallback(async () => {
+    if (!taskResult) return;
+    await exportToExcel(taskResult.sourceFiles);
+  }, [taskResult]);
 
-      xlsx.utils.book_append_sheet(
-        workbook,
-        xlsx.utils.aoa_to_sheet(detailRows),
-        '票据明细',
-      );
-      xlsx.utils.book_append_sheet(
-        workbook,
-        xlsx.utils.aoa_to_sheet(companyRows),
-        '公司汇总',
-      );
-      xlsx.utils.book_append_sheet(
-        workbook,
-        xlsx.utils.aoa_to_sheet(categoryRows),
-        '分类汇总',
-      );
+  const toggleFileDetail = useCallback((id: string) => {
+    setExpandedFileId((prev) => (prev === id ? null : id));
+  }, []);
 
-      const buffer = xlsx.write(workbook, {
-        bookType: 'xlsx',
-        type: 'array',
-      }) as ArrayBuffer;
-
-      triggerBinaryDownload(`invoice-summary-${timeTag}.xlsx`, buffer);
-    } catch {
-      triggerTextDownload(
-        `invoice-detail-${timeTag}.csv`,
-        buildCsv(detailRows),
-      );
-    }
-  };
+  // ========== 渲染 ==========
 
   return (
     <div className="site-shell">
@@ -607,356 +329,396 @@ export default function OcrInvoicePage() {
           <span className="brand-mark" aria-hidden="true" />
           <span className="brand-text">你的工具箱</span>
         </Link>
-        <nav className="main-nav" aria-label="主导航">
+        <nav className="main-nav">
           <Link href="/">首页</Link>
           <ThemeToggle />
         </nav>
       </header>
 
-      <main className="main-content invoice-page">
-        <section className="page-intro invoice-intro fade-up fade-delay-1">
-          <h1>发票 OCR 汇总</h1>
-          <p>上传票据文件，自动识别并汇总。</p>
-        </section>
+      <main className="main-content ocr-page">
+        {/* 进度条 */}
+        {phase === 'uploading' && (
+          <div className="ocr-progress-panel fade-up">
+            <div className="ocr-progress-header">
+              <span className="ocr-progress-title">正在分析...</span>
+              <span className="ocr-progress-percent">{Math.round(progress)}%</span>
+            </div>
+            <div className="ocr-progress-track">
+              <div className="ocr-progress-fill" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+        )}
 
-        <section className="invoice-upload-grid fade-up fade-delay-2">
-          <article className="invoice-dropzone">
-            <div className="invoice-dropzone-head">
-              <span className="invoice-dropzone-tag">Single Task Tool</span>
-              <button
-                className="btn btn-primary"
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-              >
-                {isUploading ? '上传中' : '选择文件'}
-              </button>
+        {/* 上传页面 */}
+        {phase !== 'done' && (
+          <section className="ocr-upload-page fade-up fade-delay-1">
+            <div className="ocr-page-intro">
+              <p className="page-kicker">Invoice OCR</p>
+              <h1>发票识别</h1>
+              <p>批量上传发票，自动提取关键信息</p>
+            </div>
+
+            <div
+              className={`ocr-upload-zone ${selectedFiles.length > 0 ? 'has-files' : ''}`}
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {selectedFiles.length === 0 ? (
+                <div className="ocr-upload-prompt">
+                  <div className="ocr-upload-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <path d="M17 8l-5-5-5 5" />
+                      <path d="M12 3v12" />
+                    </svg>
+                  </div>
+                  <h3>拖拽文件到此处</h3>
+                  <p>或点击选择文件</p>
+                  <div className="ocr-upload-formats">
+                    <span>ZIP</span>
+                    <span>PDF</span>
+                    <span>PNG</span>
+                    <span>JPG</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="ocr-file-list">
+                  <div className="ocr-file-list-header">
+                    <span>已选 {selectedFiles.length} 个文件 / {formatFileSize(totalFileSize)}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleClearFiles();
+                      }}
+                    >
+                      清空
+                    </button>
+                  </div>
+                  <div className="ocr-file-items">
+                    {selectedFiles.map((f) => (
+                      <div key={f.id} className="ocr-file-item">
+                        <div className="ocr-file-icon">{getFileExtension(f.file.name)}</div>
+                        <div className="ocr-file-info">
+                          <div className="ocr-file-name">{f.file.name}</div>
+                          <div className="ocr-file-meta">{formatFileSize(f.file.size)}</div>
+                        </div>
+                        {f.amount && <div className="ocr-file-status">{f.amount}</div>}
+                        <button
+                          type="button"
+                          className="ocr-file-remove"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveFile(f.id);
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <input
                 ref={fileInputRef}
-                className="sr-only"
                 type="file"
+                className="sr-only"
                 accept=".zip,.pdf,.png,.jpg,.jpeg"
-                onChange={(event) => {
-                  void handleFileSelect(event.target.files?.[0]);
-                }}
+                multiple
+                onChange={(e: ChangeEvent<HTMLInputElement>) => handleFileSelect(e.target.files)}
               />
             </div>
-            <div className="invoice-dropzone-body">
-              <div className="invoice-dropzone-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 16V6" />
-                  <path d="m8 10 4-4 4 4" />
-                  <path d="M5 18h14" />
-                </svg>
-              </div>
-              <h2>拖拽文件到这里，或点击上传</h2>
-              <p>支持 ZIP 递归识别。格式：zip / pdf / png / jpg。</p>
-              {uploadError ? (
-                <p className="invoice-inline-error">{uploadError}</p>
-              ) : null}
-            </div>
-          </article>
 
-          <article className="invoice-task-card">
-            <div className="invoice-task-head">
-              <h2>任务状态</h2>
-              <span className="invoice-task-badge">
-                {isUploading
-                  ? '上传中'
-                  : taskResult
-                    ? '待识别'
-                    : '等待上传'}
-              </span>
-            </div>
-            <div className="invoice-task-progress">
-              <div className="invoice-task-progress-bar">
-                <span
-                  style={{
-                    width: isUploading ? '35%' : taskResult ? '100%' : '12%',
-                  }}
-                />
+            {selectedFiles.length > 0 && (
+              <div className="ocr-upload-actions">
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={phase === 'uploading'}
+                  onClick={handleStartAnalysis}
+                >
+                  开始分析
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={handleClearFiles}>
+                  清空
+                </button>
               </div>
-              <p>
-                当前阶段：
-                {isUploading
-                  ? ' 文件上传'
-                  : taskResult
-                    ? ' 等待 OCR 识别'
-                    : ' 等待任务开始'}
-              </p>
-            </div>
-            <div className="invoice-task-stats">
-              <div>
-                <strong>{taskResult?.summary.totalFiles ?? '0'}</strong>
-                <span>文件总数</span>
-              </div>
-              <div>
-                <strong>{taskResult?.summary.queuedFiles ?? '0'}</strong>
-                <span>待识别</span>
-              </div>
-              <div>
-                <strong>{taskResult?.summary.ignoredFiles ?? '0'}</strong>
-                <span>已忽略</span>
-              </div>
-              <div>
-                <strong>{taskResult ? taskResult.rootKind.toUpperCase() : '--'}</strong>
-                <span>上传入口</span>
-              </div>
-            </div>
-          </article>
-        </section>
+            )}
 
-        <section className="invoice-summary-grid fade-up fade-delay-2">
-          {liveSummaryCards.map((card) => (
-            <article
-              key={card.label}
-              className={`invoice-summary-card ${
-                card.tone === 'warning' ? 'is-warning' : ''
-              }`}
-            >
-              <span>{card.label}</span>
-              <strong>{card.value}</strong>
-              <p>{card.hint}</p>
-            </article>
-          ))}
-        </section>
+            {error && <p className="ocr-inline-error">{error}</p>}
+          </section>
+        )}
 
-        <section className="invoice-report-grid fade-up fade-delay-3">
-          <article className="invoice-report-card">
-            <div className="invoice-report-head">
-              <h2>按开票公司汇总</h2>
-              <span>{liveCompanySummary.length} 家</span>
-            </div>
-            <div className="invoice-table-wrap invoice-report-table-wrap">
-              <table className="invoice-table">
-                <thead>
-                  <tr>
-                    <th>开票公司</th>
-                    <th>数量</th>
-                    <th>金额</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {liveCompanySummary.map((item) => (
-                    <tr
-                      key={item.name}
-                      onClick={() => {
-                        if (!taskResult) {
-                          setSelectedCompany(item.name);
-                        }
-                      }}
-                    >
-                      <td>{item.name}</td>
-                      <td>{item.invoices}</td>
-                      <td>{item.amount}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </article>
-
-          <article className="invoice-report-card">
-            <div className="invoice-report-head">
-              <h2>智能汇总</h2>
-              <span>{liveCategorySummary.length} 类</span>
-            </div>
-            <div className="invoice-table-wrap invoice-report-table-wrap">
-              <table className="invoice-table">
-                <thead>
-                  <tr>
-                    <th>分类</th>
-                    <th>数量</th>
-                    <th>金额</th>
-                    <th>说明</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {liveCategorySummary.map((item) => (
-                    <tr
-                      key={item.name}
-                      onClick={() => {
-                        if (!taskResult) {
-                          setSelectedCategory(item.name);
-                        }
-                      }}
-                    >
-                      <td>{item.name}</td>
-                      <td>{item.invoices}</td>
-                      <td>{item.amount}</td>
-                      <td>{item.confidence}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </article>
-        </section>
-
-        <section className="invoice-detail-grid fade-up fade-delay-3">
-          <article className="invoice-report-card invoice-detail-card invoice-detail-main">
-            <div className="invoice-report-head invoice-detail-head">
+        {/* 大盘页面 */}
+        {phase === 'done' && taskResult && summaryStats && (
+          <section className="ocr-dashboard fade-up">
+            <div className="ocr-dashboard-head">
               <div>
-                <h2>票据明细</h2>
-                <p>筛选与导出</p>
+                <p className="page-kicker">Invoice OCR</p>
+                <h1>识别结果</h1>
+                <p>
+                  共识别 {summaryStats.totalFiles} 张票据，总金额 {formatCurrency(summaryStats.totalAmount.toFixed(2))}
+                </p>
               </div>
-              <button
-                className="btn btn-primary"
-                type="button"
-                onClick={handleExport}
-                disabled={!liveInvoices.length}
-              >
-                导出 Excel
+              <button type="button" className="btn btn-secondary" onClick={handleReupload}>
+                重新上传
               </button>
             </div>
 
-            <div className="invoice-toolbar">
-              <label className="invoice-search-field">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="m20 20-3.5-3.5" />
-                </svg>
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="搜索文件名 / 公司 / 分类"
-                />
-              </label>
-
-              <select
-                className="invoice-select"
-                value={selectedCompany}
-                onChange={(event) => setSelectedCompany(event.target.value)}
-              >
-                <option>全部公司</option>
-                {companyOptions.map((item) => (
-                  <option key={item}>{item}</option>
+            {/* 失败横幅 */}
+            {summaryStats.failedFiles.length > 0 && (
+              <div className="ocr-failed-banner">
+                <div className="ocr-failed-head">
+                  <div className="ocr-failed-title">
+                    <span>⚠</span>
+                    <span>{summaryStats.failedFiles.length} 个文件识别失败</span>
+                  </div>
+                  <button type="button" className="btn btn-secondary" style={{ minHeight: '36px', padding: '8px 14px', fontSize: '0.82rem' }}>
+                    全部重试
+                  </button>
+                </div>
+                {summaryStats.failedFiles.map((f) => (
+                  <div key={f.id} className="ocr-failed-item">
+                    <span className="ocr-badge is-error">✗</span>
+                    <span className="ocr-failed-name">{f.name}</span>
+                    <span className="ocr-failed-error">{f.note || '识别失败'}</span>
+                    <div className="ocr-row-actions">
+                      <button type="button" className="ocr-row-btn">重试</button>
+                      <button type="button" className="ocr-row-btn">下载</button>
+                    </div>
+                  </div>
                 ))}
-              </select>
-
-              <select
-                className="invoice-select"
-                value={selectedCategory}
-                onChange={(event) => setSelectedCategory(event.target.value)}
-              >
-                <option>全部分类</option>
-                {categoryOptions.map((item) => (
-                  <option key={item}>{item}</option>
-                ))}
-              </select>
-
-              <button
-                className={`invoice-filter-chip ${onlyReview ? 'is-active' : ''}`}
-                type="button"
-                onClick={() => setOnlyReview((value) => !value)}
-              >
-                异常
-              </button>
-            </div>
-
-            <div className="invoice-table-wrap invoice-table-scroll invoice-detail-table-wrap">
-              <table className="invoice-table invoice-detail-table">
-                <thead>
-                  <tr>
-                    <th>文件名</th>
-                    <th>开票公司</th>
-                    <th>日期</th>
-                    <th>金额</th>
-                    <th>分类</th>
-                    <th>状态</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredInvoices.map((item) => (
-                    <tr
-                      key={item.id}
-                    className={item.id === activeItem?.id ? 'is-active' : ''}
-                    onClick={() => setActiveId(item.id)}
-                  >
-                      <td>{item.fileName}</td>
-                      <td>{item.company}</td>
-                      <td>{item.date}</td>
-                      <td>{item.amount}</td>
-                      <td>{item.category}</td>
-                      <td>
-                        <span
-                          className={`invoice-status-badge ${
-                            item.status === '完成'
-                              ? 'is-done'
-                              : item.status === '需复核'
-                                ? 'is-review'
-                                : 'is-failed'
-                          }`}
-                        >
-                          {item.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </article>
-
-          <aside className="invoice-report-card invoice-drawer">
-            <div className="invoice-drawer-scroll">
-              <div className="invoice-report-head invoice-drawer-head">
-                <h2>票据详情</h2>
-                <span>{activeItem.status}</span>
               </div>
+            )}
 
-              <div className="invoice-preview">
-                <div className="invoice-preview-paper">
-                  <span>预览占位</span>
-                  <small>{activeItem.fileName}</small>
+            {/* 摘要卡片 */}
+            <div className="ocr-summary-grid">
+              <div className="ocr-summary-card">
+                <div className="ocr-summary-label">票据总数</div>
+                <div className="ocr-summary-value">{summaryStats.totalFiles}</div>
+              </div>
+              <div className="ocr-summary-card">
+                <div className="ocr-summary-label">总金额</div>
+                <div className="ocr-summary-value">{formatCurrency(summaryStats.totalAmount.toFixed(2))}</div>
+              </div>
+              <div className="ocr-summary-card">
+                <div className="ocr-summary-label">开票公司</div>
+                <div className="ocr-summary-value">{summaryStats.companyCount}</div>
+              </div>
+              <div className="ocr-summary-card">
+                <div className="ocr-summary-label">需复核</div>
+                <div className="ocr-summary-value is-danger">{summaryStats.reviewCount}</div>
+              </div>
+            </div>
+
+            {/* 双列布局 */}
+            <div className="ocr-two-col">
+              {/* 分类分布 */}
+              <div className="ocr-panel">
+                <div className="ocr-panel-head">
+                  <h2>分类分布</h2>
+                </div>
+                <div className="ocr-panel-body">
+                  <div className="ocr-chart-placeholder">
+                    <span>◎</span>
+                    环形图占位
+                  </div>
                 </div>
               </div>
 
-              <div className="invoice-field-grid">
-                <label>
-                  <span>开票公司</span>
-                  <input value={activeItem.company} readOnly />
-                </label>
-                <label>
-                  <span>金额</span>
-                  <input value={activeItem.amount} readOnly />
-                </label>
-                <label>
-                  <span>分类</span>
-                  <input value={activeItem.category} readOnly />
-                </label>
-                <label>
-                  <span>开票日期</span>
-                  <input value={activeItem.date} readOnly />
-                </label>
-                <label>
-                  <span>票据类型</span>
-                  <input value={activeItem.invoiceType} readOnly />
-                </label>
-                <label>
-                  <span>发票号码</span>
-                  <input value={activeItem.invoiceNo} readOnly />
-                </label>
-              </div>
-
-              <div className="invoice-meta-block">
-                <h3>结构化结果</h3>
-                <ul>
-                  <li>税额：{activeItem.taxAmount}</li>
-                  <li>价税合计：{activeItem.totalAmount}</li>
-                  <li>分类理由：{activeItem.reason}</li>
-                </ul>
-              </div>
-
-              <div className="invoice-meta-block">
-                <h3>OCR 原文</h3>
-                <p>{activeItem.ocrText}</p>
+              {/* 公司汇总 */}
+              <div className="ocr-panel">
+                <div className="ocr-panel-head">
+                  <h2>公司汇总</h2>
+                </div>
+                <div className="ocr-panel-body" style={{ padding: 0, margin: 0 }}>
+                  <div className="ocr-table-wrap" style={{ margin: 0, padding: 0 }}>
+                    <table className="ocr-table">
+                      <thead>
+                        <tr>
+                          <th>开票公司</th>
+                          <th className="text-right">数量</th>
+                          <th className="text-right">金额</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {companySummary.slice(0, 5).map((item) => (
+                          <tr key={item.name}>
+                            <td>{item.name}</td>
+                            <td className="text-right mono">{item.count}</td>
+                            <td className="text-right mono">{formatCurrency(item.amount.toFixed(2))}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             </div>
-          </aside>
-        </section>
+
+            {/* 分类汇总 */}
+            <div className="ocr-panel">
+              <div className="ocr-panel-head">
+                <h2>分类汇总</h2>
+                <button type="button" className="btn btn-primary" style={{ minHeight: '36px', padding: '8px 14px', fontSize: '0.82rem' }} onClick={handleExport}>
+                  导出 Excel
+                </button>
+              </div>
+              <div className="ocr-table-wrap">
+                <table className="ocr-table">
+                  <thead>
+                    <tr>
+                      <th>分类</th>
+                      <th className="text-right">数量</th>
+                      <th className="text-right">金额</th>
+                      <th>说明</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {categorySummary.map((item) => (
+                      <tr key={item.name}>
+                        <td>
+                          <span className="ocr-badge is-success">{item.name}</span>
+                        </td>
+                        <td className="text-right mono">{item.count}</td>
+                        <td className="text-right mono">{formatCurrency(item.amount.toFixed(2))}</td>
+                        <td>规则分类</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 复核摘要 */}
+            <div className="ocr-panel ocr-review-panel">
+              <div className="ocr-panel-head">
+                <h2>复核摘要</h2>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button type="button" className="btn btn-primary" style={{ minHeight: '36px', padding: '8px 14px', fontSize: '0.82rem' }} onClick={handleExport}>
+                    导出 Excel
+                  </button>
+                  <button type="button" className="btn btn-secondary" style={{ minHeight: '36px', padding: '8px 14px', fontSize: '0.82rem' }}>
+                    全部重试
+                  </button>
+                  <button type="button" className="btn btn-secondary" style={{ minHeight: '36px', padding: '8px 14px', fontSize: '0.82rem' }}>
+                    下载全部
+                  </button>
+                </div>
+              </div>
+              <div style={{ maxHeight: '360px', overflowY: 'auto' }}>
+                <table className="ocr-review-table">
+                  <thead>
+                    <tr>
+                      <th>文件名</th>
+                      <th>状态</th>
+                      <th>发票号</th>
+                      <th>开票公司</th>
+                      <th>日期</th>
+                      <th className="text-right">金额</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {taskResult.sourceFiles.map((item) => {
+                      const isError = item.status === 'failed' || item.status === 'ignored';
+                      const isDuplicate = item.duplicate;
+                      const isExpanded = expandedFileId === item.id;
+
+                      return (
+                        <>
+                          <tr
+                            key={item.id}
+                            className={isError ? 'is-error' : ''}
+                            onClick={() => toggleFileDetail(item.id)}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <td className="mono">{item.name}</td>
+                            <td>
+                              {isError ? (
+                                <span className="ocr-badge is-error">失败</span>
+                              ) : isDuplicate ? (
+                                <span className="ocr-badge is-warning">
+                                  {item.duplicate?.type === 'exact' ? '明确重复' : '疑似重复'}
+                                </span>
+                              ) : (
+                                <span className="ocr-badge is-success">成功</span>
+                              )}
+                            </td>
+                            <td className="mono">{item.invoice?.invoiceNo || '--'}</td>
+                            <td>{item.invoice?.sellerName || '--'}</td>
+                            <td>{item.invoice?.issueDate || '--'}</td>
+                            <td className="text-right mono">
+                              {item.invoice?.totalAmount ? formatCurrency(item.invoice.totalAmount) : '--'}
+                            </td>
+                            <td>
+                              <div className="ocr-row-actions">
+                                <button
+                                  type="button"
+                                  className={`ocr-detail-toggle ${isExpanded ? 'is-open' : ''}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleFileDetail(item.id);
+                                  }}
+                                >
+                                  详情
+                                </button>
+                                <button type="button" className="ocr-row-btn">下载</button>
+                              </div>
+                            </td>
+                          </tr>
+                          {isExpanded && (
+                            <tr key={`${item.id}-detail`} className="ocr-detail-row">
+                              <td colSpan={7} style={{ padding: '14px 18px', background: 'var(--bg-strong)' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', fontSize: '0.82rem' }}>
+                                  <div className="ocr-review-field">
+                                    <span className="ocr-review-field-label">发票类型</span>
+                                    <span className="ocr-review-field-value">{item.invoice?.invoiceType || '--'}</span>
+                                  </div>
+                                  <div className="ocr-review-field">
+                                    <span className="ocr-review-field-label">购买方</span>
+                                    <span className="ocr-review-field-value">{item.invoice?.buyerName || '--'}</span>
+                                  </div>
+                                  <div className="ocr-review-field">
+                                    <span className="ocr-review-field-label">税额</span>
+                                    <span className="ocr-review-field-value mono">{formatCurrency(item.invoice?.taxAmount)}</span>
+                                  </div>
+                                  <div className="ocr-review-field">
+                                    <span className="ocr-review-field-label">不含税金额</span>
+                                    <span className="ocr-review-field-value mono">
+                                      {item.invoice?.amountWithoutTax ? formatCurrency(item.invoice.amountWithoutTax) : '--'}
+                                    </span>
+                                  </div>
+                                  <div className="ocr-review-field">
+                                    <span className="ocr-review-field-label">OCR 提供商</span>
+                                    <span className="ocr-review-field-value">{item.ocrProvider || '--'}</span>
+                                  </div>
+                                  <div className="ocr-review-field">
+                                    <span className="ocr-review-field-label">备注</span>
+                                    <span className="ocr-review-field-value">{item.note || '--'}</span>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        )}
       </main>
+
+      <footer className="site-footer">
+        <p>© 2026 你的工具箱</p>
+        <p>发票 OCR 识别工具</p>
+      </footer>
     </div>
   );
 }

@@ -20,6 +20,12 @@ export type OcrInvoiceExtractedFields = {
   category?: OcrInvoiceCategory;
 };
 
+export type OcrInvoiceDuplicateInfo = {
+  type: 'exact' | 'possible';
+  reason: string;
+  matchedFileIds: string[];
+};
+
 export type OcrInvoiceSourceFile = {
   id: string;
   name: string;
@@ -36,6 +42,7 @@ export type OcrInvoiceSourceFile = {
   ocrProvider?: string;
   ocrModel?: string;
   invoice?: OcrInvoiceExtractedFields;
+  duplicate?: OcrInvoiceDuplicateInfo;
 };
 
 export type OcrInvoiceTaskResult = {
@@ -47,6 +54,8 @@ export type OcrInvoiceTaskResult = {
     supportedFiles: number;
     ignoredFiles: number;
     queuedFiles: number;
+    reviewFiles: number;
+    duplicateFiles: number;
   };
   sourceFiles: OcrInvoiceSourceFile[];
 };
