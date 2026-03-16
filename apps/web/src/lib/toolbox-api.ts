@@ -18,6 +18,11 @@ export type OcrInvoiceTaskFile = {
   extractedTextPreview?: string;
   ocrProvider?: string;
   ocrModel?: string;
+  duplicate?: {
+    type: 'exact' | 'possible';
+    reason: string;
+    matchedFileIds: string[];
+  };
   invoice?: {
     invoiceType?: string;
     invoiceNo?: string;
@@ -40,6 +45,8 @@ export type OcrInvoiceTaskResult = {
     supportedFiles: number;
     ignoredFiles: number;
     queuedFiles: number;
+    reviewFiles: number;
+    duplicateFiles: number;
   };
   sourceFiles: OcrInvoiceTaskFile[];
 };
@@ -198,11 +205,16 @@ export async function sendLanTransferMessage(
 export async function uploadOcrInvoiceTask(file: File) {
   const formData = new FormData();
   formData.append('file', file);
+  let response: Response;
 
-  const response = await fetch(`${apiBaseUrl}/ocr-invoice/tasks/upload`, {
-    method: 'POST',
-    body: formData,
-  });
+  try {
+    response = await fetch(`${apiBaseUrl}/ocr-invoice/tasks/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+  } catch {
+    throw new Error('分析服务不可用，请确认后端已启动在 3001 端口。');
+  }
 
   if (!response.ok) {
     const fallbackMessage = '上传失败，请检查文件格式或大小。';
