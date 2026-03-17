@@ -10,6 +10,7 @@ import { extname } from 'node:path';
 import { PDFParse } from 'pdf-parse';
 import { OcrProvider, OCR_PROVIDER } from './ocr-provider';
 import {
+  OcrInvoiceDuplicateInfo,
   OcrInvoiceExtractedFields,
   OcrInvoiceSourceFile,
   OcrInvoiceSourceKind,
@@ -68,15 +69,20 @@ export class OcrInvoiceService {
               normalizedFile,
             ),
           ];
+    const normalizedSourceFiles = annotateDuplicateInvoices(sourceFiles);
 
-    const supportedFiles = sourceFiles.filter(
+    const supportedFiles = normalizedSourceFiles.filter(
       (item) => item.kind === 'pdf' || item.kind === 'image',
     );
-    const ignoredFiles = sourceFiles.filter(
+    const ignoredFiles = normalizedSourceFiles.filter(
       (item) => item.status === 'ignored',
     );
-    const pendingFiles = sourceFiles.filter(
+    const pendingFiles = normalizedSourceFiles.filter(
       (item) => item.status === 'pending_ocr',
+    );
+    const reviewFiles = normalizedSourceFiles.filter(isReviewCandidate);
+    const duplicateFiles = normalizedSourceFiles.filter(
+      (item) => item.duplicate,
     );
 
     return {
@@ -84,12 +90,14 @@ export class OcrInvoiceService {
       uploadedFileName: normalizedFile.originalname,
       rootKind,
       summary: {
-        totalFiles: sourceFiles.length,
+        totalFiles: normalizedSourceFiles.length,
         supportedFiles: supportedFiles.length,
         ignoredFiles: ignoredFiles.length,
         queuedFiles: pendingFiles.length,
+        reviewFiles: reviewFiles.length,
+        duplicateFiles: duplicateFiles.length,
       },
-      sourceFiles,
+      sourceFiles: normalizedSourceFiles,
     };
   }
 
@@ -348,6 +356,117 @@ export class OcrInvoiceService {
   }
 }
 
+/**
+ * 对已解析票据做最小可用的重复检测。
+ * 规则分两层：
+ * 1. 发票号 + 销售方 + 日期 + 金额 完全一致，判定为明确重复。
+ * 2. 无发票号时，用 销售方 + 日期 + 金额 做弱匹配，判定为疑似重复。
+ */
+function annotateDuplicateInvoices(sourceFiles: OcrInvoiceSourceFile[]) {
+  const next = sourceFiles.map((item) => ({ ...item }));
+  const exactGroups = new Map<string, OcrInvoiceSourceFile[]>();
+  const possibleGroups = new Map<string, OcrInvoiceSourceFile[]>();
+
+  next.forEach((item) => {
+    if (item.status !== 'parsed' || !item.invoice) {
+      return;
+    }
+
+    const exactKey = buildExactDuplicateKey(item.invoice);
+
+    if (exactKey) {
+      const group = exactGroups.get(exactKey) ?? [];
+      group.push(item);
+      exactGroups.set(exactKey, group);
+      return;
+    }
+
+    const possibleKey = buildPossibleDuplicateKey(item.invoice);
+
+    if (!possibleKey) {
+      return;
+    }
+
+    const group = possibleGroups.get(possibleKey) ?? [];
+    group.push(item);
+    possibleGroups.set(possibleKey, group);
+  });
+
+  annotateDuplicateGroups(exactGroups, 'exact');
+  annotateDuplicateGroups(possibleGroups, 'possible');
+
+  return next;
+}
+
+function annotateDuplicateGroups(
+  groups: Map<string, OcrInvoiceSourceFile[]>,
+  type: OcrInvoiceDuplicateInfo['type'],
+) {
+  groups.forEach((group) => {
+    if (group.length < 2) {
+      return;
+    }
+
+    const matchedFileIds = group.map((item) => item.id);
+    const reason =
+      type === 'exact'
+        ? '发票号码、日期、金额和开票公司一致，疑似重复报销。'
+        : '开票公司、日期和金额一致，但缺少稳定票号，疑似重复报销。';
+
+    group.forEach((item) => {
+      item.duplicate = {
+        type,
+        reason,
+        matchedFileIds: matchedFileIds.filter((id) => id !== item.id),
+      };
+      item.note = reason;
+    });
+  });
+}
+
+function buildExactDuplicateKey(invoice: OcrInvoiceExtractedFields) {
+  const invoiceNo = normalizeKeyPart(invoice.invoiceNo);
+  const sellerName = normalizeKeyPart(invoice.sellerName);
+  const issueDate = normalizeKeyPart(invoice.issueDate);
+  const totalAmount = normalizeAmount(invoice.totalAmount);
+
+  if (!invoiceNo || !sellerName || !issueDate || !totalAmount) {
+    return '';
+  }
+
+  return ['exact', invoiceNo, sellerName, issueDate, totalAmount].join('|');
+}
+
+function buildPossibleDuplicateKey(invoice: OcrInvoiceExtractedFields) {
+  const sellerName = normalizeKeyPart(invoice.sellerName);
+  const issueDate = normalizeKeyPart(invoice.issueDate);
+  const totalAmount = normalizeAmount(invoice.totalAmount);
+
+  if (!sellerName || !issueDate || !totalAmount) {
+    return '';
+  }
+
+  return ['possible', sellerName, issueDate, totalAmount].join('|');
+}
+
+function normalizeKeyPart(value?: string) {
+  return value?.replace(/\s+/g, '').trim().toLowerCase() ?? '';
+}
+
+function normalizeAmount(value?: string) {
+  const amount = Number(value ?? '');
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return '';
+  }
+
+  return amount.toFixed(2);
+}
+
+function isReviewCandidate(item: OcrInvoiceSourceFile) {
+  return item.status !== 'parsed' || Boolean(item.duplicate);
+}
+
 function normalizeExtension(fileName: string) {
   return extname(fileName).replace('.', '').toLowerCase();
 }
@@ -448,8 +567,10 @@ function extractInvoiceFields(text: string): OcrInvoiceExtractedFields {
   const sellerName = extractSellerName(text, buyerName);
   const amounts = matchAll(text, /¥\s?(\d+\.\d{2})/g).map((item) => item[1]);
   const amountWithoutTax = amounts.length >= 3 ? amounts[0] : undefined;
-  const taxAmount = amounts.length >= 2 ? amounts[amounts.length - 2] : undefined;
-  const totalAmount = amounts.length >= 1 ? amounts[amounts.length - 1] : undefined;
+  const taxAmount =
+    amounts.length >= 2 ? amounts[amounts.length - 2] : undefined;
+  const totalAmount =
+    amounts.length >= 1 ? amounts[amounts.length - 1] : undefined;
   const category = classifyInvoice(text, sellerName);
 
   return {
@@ -539,9 +660,7 @@ function classifyInvoice(
   const candidate = `${sellerName ?? ''} ${text}`;
 
   if (
-    /(餐饮|咖啡|奶茶|美食|饭店|餐厅|瑞幸|星巴克|肯德基|麦当劳)/.test(
-      candidate,
-    )
+    /(餐饮|咖啡|奶茶|美食|饭店|餐厅|瑞幸|星巴克|肯德基|麦当劳)/.test(candidate)
   ) {
     return '餐饮';
   }
@@ -584,7 +703,10 @@ function cleanEntityName(value: string | undefined) {
 
   return value
     .replace(/^(名称[:：]?\s*)+/, '')
-    .replace(/^(购买方信息|销售方信息|统一社会信用代码\/纳税人识别号[:：]?\s*)+/g, '')
+    .replace(
+      /^(购买方信息|销售方信息|统一社会信用代码\/纳税人识别号[:：]?\s*)+/g,
+      '',
+    )
     .replace(/[;；，,。]+$/g, '')
     .trim();
 }

@@ -47,6 +47,24 @@ type IncomingTransfer = {
   receivedBytes: number;
 };
 
+type DebugState = {
+  offerSent: boolean;
+  offerReceived: boolean;
+  answerSent: boolean;
+  answerReceived: boolean;
+  polledMessageCount: number;
+  localIceCount: number;
+  remoteIceCount: number;
+  pendingIceCount: number;
+  signalingState: string;
+  iceGatheringState: string;
+  iceConnectionState: string;
+  connectionState: string;
+  dataChannelState: string;
+  lastError: string;
+  events: { id: string; text: string }[];
+};
+
 const flowSteps: { key: Scene; index: string; title: string; description: string }[] = [
   { key: 'entry', index: '01', title: '建立连接', description: '创建或加入' },
   { key: 'connect', index: '02', title: '完成配对', description: '输入短码' },
@@ -77,6 +95,7 @@ const entryModeContent: Record<
 };
 
 const chunkSize = 64 * 1024;
+const maxDebugEvents = 12;
 
 function formatBytes(bytes: number) {
   if (bytes >= 1024 * 1024) {
@@ -84,6 +103,26 @@ function formatBytes(bytes: number) {
   }
 
   return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+function createInitialDebugState(): DebugState {
+  return {
+    offerSent: false,
+    offerReceived: false,
+    answerSent: false,
+    answerReceived: false,
+    polledMessageCount: 0,
+    localIceCount: 0,
+    remoteIceCount: 0,
+    pendingIceCount: 0,
+    signalingState: 'stable',
+    iceGatheringState: 'new',
+    iceConnectionState: 'new',
+    connectionState: 'new',
+    dataChannelState: 'idle',
+    lastError: '',
+    events: [],
+  };
 }
 
 function sleep(ms: number) {
@@ -110,6 +149,7 @@ export default function LanTransferPage() {
   const [isBusy, setIsBusy] = useState(false);
   const [outboundFiles, setOutboundFiles] = useState<OutboundFileItem[]>([]);
   const [inboundFiles, setInboundFiles] = useState<InboundFileItem[]>([]);
+  const [debugState, setDebugState] = useState<DebugState>(createInitialDebugState);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const sessionIdRef = useRef('');
@@ -128,17 +168,46 @@ export default function LanTransferPage() {
   const objectUrlsRef = useRef<string[]>([]);
   const selfDeviceNameRef = useRef('Browser Device');
 
+  // 记录最近的建连事件，方便直接在页面上定位信令和 ICE 的卡点。
+  function pushDebugEvent(message: string) {
+    const timestamp = new Date().toLocaleTimeString();
+    setDebugState((current) => ({
+      ...current,
+      events: [
+        {
+          id: crypto.randomUUID(),
+          text: `${timestamp} ${message}`,
+        },
+        ...current.events,
+      ].slice(0, maxDebugEvents),
+    }));
+  }
+
+  // 统一合并调试状态，避免不同回调各自覆盖关键信息。
+  function patchDebugState(patch: Partial<DebugState>) {
+    setDebugState((current) => ({ ...current, ...patch }));
+  }
+
   async function postSignal(type: string, payload?: unknown) {
     if (!sessionIdRef.current || !clientIdRef.current) {
       return;
     }
 
-    await sendLanTransferMessage(
-      sessionIdRef.current,
-      clientIdRef.current,
-      type,
-      payload,
-    );
+    try {
+      await sendLanTransferMessage(
+        sessionIdRef.current,
+        clientIdRef.current,
+        type,
+        payload,
+      );
+      pushDebugEvent(`信令已发送: ${type}`);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : `发送 ${type} 失败`;
+      patchDebugState({ lastError: message });
+      pushDebugEvent(`信令发送失败(${type}): ${message}`);
+      throw error;
+    }
   }
 
   function stopPolling() {
@@ -376,8 +445,12 @@ export default function LanTransferPage() {
   function configureDataChannel(channel: RTCDataChannel) {
     channel.binaryType = 'arraybuffer';
     channelRef.current = channel;
+    patchDebugState({ dataChannelState: channel.readyState });
+    pushDebugEvent(`DataChannel 已创建: ${channel.label}`);
 
     channel.onopen = () => {
+      patchDebugState({ dataChannelState: channel.readyState });
+      pushDebugEvent('DataChannel 已打开');
       setScene('session');
       setErrorMessage('');
       updateConnectionStatus('会话进行中', 'live', '已连接');
@@ -392,11 +465,18 @@ export default function LanTransferPage() {
     };
 
     channel.onclose = () => {
+      patchDebugState({ dataChannelState: channel.readyState });
+      pushDebugEvent('DataChannel 已关闭');
       setSpeedLabel('--');
       updateConnectionStatus('连接已关闭', 'pending', '已断开');
     };
 
     channel.onerror = () => {
+      patchDebugState({
+        dataChannelState: channel.readyState,
+        lastError: '数据通道异常',
+      });
+      pushDebugEvent('DataChannel 异常');
       setErrorMessage('数据通道异常，请重新建立连接。');
       updateConnectionStatus('连接异常', 'pending', '连接异常');
     };
@@ -424,16 +504,30 @@ export default function LanTransferPage() {
       const payload = message.payload as { clientName?: string } | undefined;
       setPeerLabel(payload?.clientName || '对端已加入');
       updateConnectionStatus('正在建连', 'live', '连接中');
+      pushDebugEvent('收到 peer-joined');
 
       if (
         isInitiatorRef.current &&
         !hasSentOfferRef.current &&
         !connection.localDescription
       ) {
-        hasSentOfferRef.current = true;
-        const offer = await connection.createOffer();
-        await connection.setLocalDescription(offer);
-        await postSignal('offer', offer);
+        try {
+          hasSentOfferRef.current = true;
+          const offer = await connection.createOffer();
+          await connection.setLocalDescription(offer);
+          patchDebugState({
+            offerSent: true,
+            signalingState: connection.signalingState,
+          });
+          pushDebugEvent('已发送 offer');
+          await postSignal('offer', offer);
+        } catch (error) {
+          const messageText =
+            error instanceof Error ? error.message : '创建 offer 失败';
+          patchDebugState({ lastError: messageText });
+          pushDebugEvent(`offer 发送失败: ${messageText}`);
+          setErrorMessage(`创建连接失败：${messageText}`);
+        }
       }
 
       return;
@@ -446,15 +540,37 @@ export default function LanTransferPage() {
         return;
       }
 
-      await connection.setRemoteDescription(payload);
-      for (const candidate of pendingIceCandidatesRef.current) {
-        await connection.addIceCandidate(candidate);
+      try {
+        patchDebugState({ offerReceived: true });
+        pushDebugEvent('已收到 offer');
+        await connection.setRemoteDescription(payload);
+        patchDebugState({
+          signalingState: connection.signalingState,
+          pendingIceCount: pendingIceCandidatesRef.current.length,
+        });
+
+        for (const candidate of pendingIceCandidatesRef.current) {
+          await connection.addIceCandidate(candidate);
+        }
+
+        pendingIceCandidatesRef.current = [];
+        const answer = await connection.createAnswer();
+        await connection.setLocalDescription(answer);
+        patchDebugState({
+          answerSent: true,
+          signalingState: connection.signalingState,
+          pendingIceCount: 0,
+        });
+        pushDebugEvent('已发送 answer');
+        await postSignal('answer', answer);
+        updateConnectionStatus('正在建连', 'live', '连接中');
+      } catch (error) {
+        const messageText =
+          error instanceof Error ? error.message : '处理 offer 失败';
+        patchDebugState({ lastError: messageText });
+        pushDebugEvent(`offer 处理失败: ${messageText}`);
+        setErrorMessage(`建立连接失败：${messageText}`);
       }
-      pendingIceCandidatesRef.current = [];
-      const answer = await connection.createAnswer();
-      await connection.setLocalDescription(answer);
-      await postSignal('answer', answer);
-      updateConnectionStatus('正在建连', 'live', '连接中');
       return;
     }
 
@@ -465,12 +581,29 @@ export default function LanTransferPage() {
         return;
       }
 
-      await connection.setRemoteDescription(payload);
-      for (const candidate of pendingIceCandidatesRef.current) {
-        await connection.addIceCandidate(candidate);
+      try {
+        patchDebugState({ answerReceived: true });
+        pushDebugEvent('已收到 answer');
+        await connection.setRemoteDescription(payload);
+        patchDebugState({
+          signalingState: connection.signalingState,
+          pendingIceCount: pendingIceCandidatesRef.current.length,
+        });
+
+        for (const candidate of pendingIceCandidatesRef.current) {
+          await connection.addIceCandidate(candidate);
+        }
+
+        pendingIceCandidatesRef.current = [];
+        patchDebugState({ pendingIceCount: 0 });
+        updateConnectionStatus('正在建连', 'live', '连接中');
+      } catch (error) {
+        const messageText =
+          error instanceof Error ? error.message : '处理 answer 失败';
+        patchDebugState({ lastError: messageText });
+        pushDebugEvent(`answer 处理失败: ${messageText}`);
+        setErrorMessage(`建立连接失败：${messageText}`);
       }
-      pendingIceCandidatesRef.current = [];
-      updateConnectionStatus('正在建连', 'live', '连接中');
       return;
     }
 
@@ -483,12 +616,24 @@ export default function LanTransferPage() {
 
       if (!connection.remoteDescription) {
         pendingIceCandidatesRef.current.push(payload);
+        patchDebugState({
+          pendingIceCount: pendingIceCandidatesRef.current.length,
+        });
+        pushDebugEvent('远端 ICE 先到，已进入待处理队列');
         return;
       }
 
       try {
         await connection.addIceCandidate(payload);
+        setDebugState((current) => ({
+          ...current,
+          remoteIceCount: current.remoteIceCount + 1,
+          pendingIceCount: pendingIceCandidatesRef.current.length,
+        }));
+        pushDebugEvent('已应用远端 ICE');
       } catch {
+        patchDebugState({ lastError: 'ICE 候选同步失败' });
+        pushDebugEvent('远端 ICE 应用失败');
         setErrorMessage('ICE 候选同步失败，请重试。');
       }
     }
@@ -514,13 +659,26 @@ export default function LanTransferPage() {
 
         cursorRef.current = response.nextCursor;
         setExpiresAtLabel(new Date(response.expiresAt).toLocaleTimeString());
+        if (response.messages.length) {
+          setDebugState((current) => ({
+            ...current,
+            polledMessageCount: current.polledMessageCount + response.messages.length,
+          }));
+          pushDebugEvent(
+            `轮询到 ${response.messages.length} 条消息: ${response.messages.map((item) => item.type).join(', ')}`,
+          );
+        }
 
         for (const message of response.messages) {
           await handleSignalMessage(message);
         }
       } catch (error) {
+        const messageText =
+          error instanceof Error ? error.message : '轮询连接状态失败。';
+        patchDebugState({ lastError: messageText });
+        pushDebugEvent(`轮询失败: ${messageText}`);
         setErrorMessage(
-          error instanceof Error ? error.message : '轮询连接状态失败。',
+          messageText,
         );
       } finally {
         pollingBusyRef.current = false;
@@ -533,20 +691,58 @@ export default function LanTransferPage() {
     pendingIceCandidatesRef.current = [];
     isInitiatorRef.current = isInitiator;
     hasSentOfferRef.current = false;
+    setDebugState(createInitialDebugState());
+    pushDebugEvent(`初始化 PeerConnection: ${isInitiator ? '创建方' : '加入方'}`);
 
+    // 当前工具只面向同一局域网直连，优先使用 host candidate。
+    // 外部 STUN 在部分网络下会解析失败，反而导致 checking 后断开。
     const connection = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+      iceServers: [],
     });
     connectionRef.current = connection;
+    patchDebugState({
+      signalingState: connection.signalingState,
+      iceGatheringState: connection.iceGatheringState,
+      iceConnectionState: connection.iceConnectionState,
+      connectionState: connection.connectionState,
+    });
 
     connection.onicecandidate = (event) => {
       if (event.candidate) {
+        setDebugState((current) => ({
+          ...current,
+          localIceCount: current.localIceCount + 1,
+        }));
+        pushDebugEvent('已发送本地 ICE');
         void postSignal('ice-candidate', event.candidate.toJSON());
       }
     };
 
+    connection.onicecandidateerror = (event) => {
+      const message = `${event.errorCode || 'unknown'} ${event.errorText || 'ICE candidate error'}`.trim();
+      patchDebugState({ lastError: message });
+      pushDebugEvent(`icecandidateerror: ${message}`);
+    };
+
+    connection.onsignalingstatechange = () => {
+      patchDebugState({ signalingState: connection.signalingState });
+      pushDebugEvent(`signalingState -> ${connection.signalingState}`);
+    };
+
+    connection.onicegatheringstatechange = () => {
+      patchDebugState({ iceGatheringState: connection.iceGatheringState });
+      pushDebugEvent(`iceGatheringState -> ${connection.iceGatheringState}`);
+    };
+
+    connection.oniceconnectionstatechange = () => {
+      patchDebugState({ iceConnectionState: connection.iceConnectionState });
+      pushDebugEvent(`iceConnectionState -> ${connection.iceConnectionState}`);
+    };
+
     connection.onconnectionstatechange = () => {
       const state = connection.connectionState;
+      patchDebugState({ connectionState: state });
+      pushDebugEvent(`connectionState -> ${state}`);
 
       if (state === 'connected') {
         setScene('session');
@@ -591,6 +787,7 @@ export default function LanTransferPage() {
       updateConnectionStatus('等待对端加入', 'pending', '等待中');
       await setupPeerConnection(true);
       startPolling(session.sessionId, session.clientId);
+      pushDebugEvent(`已创建会话: ${session.sessionId}`);
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : '创建连接失败。',
@@ -627,6 +824,7 @@ export default function LanTransferPage() {
       updateConnectionStatus('准备加入', 'pending', '等待中');
       await setupPeerConnection(false);
       startPolling(session.sessionId, session.clientId);
+      pushDebugEvent(`已加入会话: ${session.sessionId}`);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : '加入连接失败。');
     } finally {
@@ -676,6 +874,18 @@ export default function LanTransferPage() {
       objectUrls.forEach((url) => URL.revokeObjectURL(url));
     };
   }, []);
+
+  const debugRows = [
+    ['offer', `${debugState.offerSent ? 'sent' : '--'} / ${debugState.offerReceived ? 'received' : '--'}`],
+    ['answer', `${debugState.answerSent ? 'sent' : '--'} / ${debugState.answerReceived ? 'received' : '--'}`],
+    ['messages', `${debugState.polledMessageCount}`],
+    ['ice', `local ${debugState.localIceCount} / remote ${debugState.remoteIceCount} / pending ${debugState.pendingIceCount}`],
+    ['signaling', debugState.signalingState],
+    ['iceGathering', debugState.iceGatheringState],
+    ['iceConnection', debugState.iceConnectionState],
+    ['connection', debugState.connectionState],
+    ['dataChannel', debugState.dataChannelState],
+  ] as const;
 
   return (
     <div className="site-shell">
@@ -852,6 +1062,33 @@ export default function LanTransferPage() {
                   <div>
                     <span>短码时效</span>
                     <strong>{expiresAtLabel}</strong>
+                  </div>
+                </div>
+
+                <div className="lan-debug-panel" aria-label="建连调试信息">
+                  <div className="lan-files-head">
+                    <h3>建连状态</h3>
+                    <span className="lan-pill">Debug</span>
+                  </div>
+                  <div className="lan-debug-grid">
+                    {debugRows.map(([label, value]) => (
+                      <div key={label}>
+                        <span>{label}</span>
+                        <strong>{value}</strong>
+                      </div>
+                    ))}
+                  </div>
+                  {debugState.lastError ? (
+                    <p className="lan-error-text">{debugState.lastError}</p>
+                  ) : null}
+                  <div className="lan-debug-log">
+                    {debugState.events.length ? (
+                      debugState.events.map((item) => (
+                        <p key={item.id}>{item.text}</p>
+                      ))
+                    ) : (
+                      <p>等待建连事件…</p>
+                    )}
                   </div>
                 </div>
 

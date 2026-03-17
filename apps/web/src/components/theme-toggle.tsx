@@ -53,6 +53,7 @@ export function ThemeToggle() {
     <button
       className="theme-toggle"
       type="button"
+      suppressHydrationWarning
       aria-label={theme === 'dark' ? '切换到浅色主题' : '切换到深色主题'}
       onClick={() => {
         const next = theme === 'dark' ? 'light' : 'dark';

@@ -32,7 +32,6 @@
 - `npm run lint --workspace api` 通过
 - `npm run lint --workspace web` 通过
 - `npm run build --workspace api` 通过
-- `npm run build --workspace web` 通过
 - 后端接口直接请求可返回有效会话数据
 
 ## 当前卡点
@@ -44,6 +43,12 @@
 - 已修过两轮典型时序问题：
   - 提前到达的 ICE candidate 先缓存，待 remote description 设置后再加入
   - 创建方改为等待对端加入后再发送 offer
+- 已补充页面内建连调试面板，可直接看到：
+  - `offer / answer` 是否已收发
+  - 本地、远端、待处理 `ICE candidate` 数量
+  - `signalingState / iceGatheringState / iceConnectionState / connectionState`
+  - `dataChannel` 当前状态
+  - 最近建连事件日志与最后一次错误
 - 目前仍需进一步确认卡点是在：
   - offer / answer 未闭环
   - ICE 未连通
@@ -51,11 +56,13 @@
 
 ## 下一步建议
 
-- 在页面中加入最小调试面板，实时显示：
-  - `offer` 是否已发送
-  - `answer` 是否已收到
-  - `ICE candidate` 收发数量
-  - `connectionState`
-  - `iceConnectionState`
-  - `dataChannel.readyState`
-- 先把建连阶段定位清楚，再继续优化测速、剩余时间、失败重试和扫码配对。
+- 先用两个窗口重新复测，并记录调试面板的实际状态组合：
+  - 是否停在 `offer sent / answer --`
+  - 是否停在 `answer received` 后 `iceConnectionState = checking`
+  - 是否 `connectionState = connected` 但 `dataChannel` 未打开
+- 根据调试面板结果继续针对性修复协商或 ICE 问题，再继续做测速、剩余时间、失败重试和扫码配对。
+
+## 本轮验证
+
+- `npm run lint --workspace web` 通过
+- `npm run build --workspace web` 未通过，但失败点在既有的 `ocr-invoice` 页面类型错误，与本次 `lan-transfer` 调试改动无关

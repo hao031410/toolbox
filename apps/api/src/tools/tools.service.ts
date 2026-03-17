@@ -33,6 +33,12 @@ export class ToolsService {
         title: '开发者工具',
         tools: [
           {
+            key: 'cron',
+            name: 'Cron 表达式',
+            description: 'Quartz 6/7 段构建、校验、反解析与触发预览。',
+            status: 'available',
+          },
+          {
             key: 'timestamp',
             name: '时间戳转换',
             description: 'Unix 时间与日期格式互转。',

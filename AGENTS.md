@@ -24,6 +24,9 @@ Use TypeScript across both apps. Follow the existing style: single quotes in API
 ## Testing Guidelines
 Backend tests use Jest. Unit tests should end with `.spec.ts`; e2e tests live under `apps/api/test` and use `*.e2e-spec.ts`. Add or update tests for service, controller, validation, and persistence changes. There is currently no frontend test suite, so any UI change should at minimum pass `npm run lint` and `npm run build`.
 
+## Frontend Workflow
+For new frontend tools or significant UI/UX changes, design the UI/UX first and present it as a standalone HTML prototype under `output/`. Only proceed to actual feature implementation after that HTML design is reviewed and approved.
+
 ## Commit & Pull Request Guidelines
 Recent history follows Conventional Commits: `feat: ...`, `fix: ...`, `chore: ...`. Keep commits focused and scoped to one change. PRs should include a short summary, affected areas (`web`, `api`, `docker`, `doc`), validation steps you ran, and screenshots for visible UI changes. Link related issues when applicable.
 

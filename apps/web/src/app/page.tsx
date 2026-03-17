@@ -77,6 +77,20 @@ const toolGroups: ToolGroup[] = [
     title: '开发者工具',
     tools: [
       {
+        key: 'cron',
+        name: 'Cron 表达式',
+        description: 'Quartz 6/7 段构建、校验、反解析与触发预览。',
+        href: '/cron',
+        icon: (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 6v6l4 2" />
+            <circle cx="12" cy="12" r="8" />
+            <path d="M5 4.5h4" />
+            <path d="M15 19.5h4" />
+          </svg>
+        ),
+      },
+      {
         key: 'timestamp',
         name: '时间戳转换',
         description: 'Unix 时间与日期格式互转。',
