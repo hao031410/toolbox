@@ -67,11 +67,6 @@ jobs:
             ${{ vars.DOCKER_REGISTRY }}/${{ vars.WEB_IMAGE }}:master
             ${{ vars.DOCKER_REGISTRY }}/${{ vars.WEB_IMAGE }}:sha-${{ github.sha }}
 
-      - name: Watchtower Notification
-        run: |
-          curl --location --request POST '${{ vars.WATCH_TOWER_URL }}' \
-          --header 'Authorization: Bearer ${{ secrets.WATCH_TOWER_TOKEN }}'
-
   publish-api:
     runs-on: ubuntu-latest
     needs: validate
@@ -106,6 +101,11 @@ jobs:
             ${{ vars.DOCKER_REGISTRY }}/${{ vars.API_IMAGE }}:master
             ${{ vars.DOCKER_REGISTRY }}/${{ vars.API_IMAGE }}:sha-${{ github.sha }}
 
+  notify:
+    runs-on: ubuntu-latest
+    needs: [publish-web, publish-api]
+    environment: master
+    steps:
       - name: Watchtower Notification
         run: |
           curl --location --request POST '${{ vars.WATCH_TOWER_URL }}' \
