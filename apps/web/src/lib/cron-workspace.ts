@@ -44,7 +44,7 @@ export type DayOfWeekFieldState = Omit<NumericFieldState, 'mode'> & {
 };
 
 export type YearFieldState = Omit<NumericFieldState, 'mode'> & {
-  mode: Exclude<YearMode, 'specific'>;
+  mode: YearMode;
 };
 
 export type CronWorkspaceState = {
@@ -124,15 +124,15 @@ function createNumericField(
  */
 export function createDefaultCronState(): CronWorkspaceState {
   return {
-    second: createNumericField(0, 1, 0, 1),
-    minute: createNumericField(0, 1, 0, 1),
-    hour: createNumericField(0, 1, 0, 1),
+    second: { ...createNumericField(0, 1, 0, 1), mode: 'specific', selected: [0] },
+    minute: { ...createNumericField(0, 1, 0, 1), mode: 'specific', selected: [0] },
+    hour: { ...createNumericField(0, 1, 0, 1), mode: 'specific', selected: [0] },
     day_of_month: {
       ...createNumericField(1, 2, 1, 1),
       mode: 'every',
       nearestWeekday: 15,
     },
-    month: createNumericField(1, 2, 1, 1),
+    month: { ...createNumericField(1, 2, 1, 1), mode: 'every' },
     day_of_week: {
       ...createNumericField(1, 2, 1, 1),
       mode: 'omit',
@@ -246,6 +246,12 @@ export function buildFieldSegment(
 
   if (state.mode === 'step') {
     return `${state.stepStart}/${state.stepEvery}`;
+  }
+
+  // mode === 'specific'
+  if (!state.selected || state.selected.length === 0) {
+    // 如果进入指定模式但没选值，默认返回 *（如果是日/周且另一侧不是 ?，Quartz 可能会报错，但这里优先遵循用户“没选即任意”的直觉）
+    return field === 'day_of_month' || field === 'day_of_week' ? '?' : '*';
   }
 
   return formatSelectedValues(state.selected, field);
@@ -571,28 +577,13 @@ function isEveryLike(
  * 某些高频规则会让匹配器长时间遍历，先跳过预览，避免页面卡顿。
  */
 function shouldSkipPreview(state: CronWorkspaceState) {
-  const isHighFrequency =
-    isEveryLike(state.second) &&
-    isEveryLike(state.minute) &&
-    isEveryLike(state.hour);
+  const isSecondEvery = state.second.mode === 'every' || (state.second.mode === 'step' && state.second.stepEvery === 1);
+  const isMinuteEvery = state.minute.mode === 'every' || (state.minute.mode === 'step' && state.minute.stepEvery === 1);
+  const isHourEvery = state.hour.mode === 'every' || (state.hour.mode === 'step' && state.hour.stepEvery === 1);
 
-  if (!isHighFrequency) {
-    return false;
-  }
-
-  return (
-    state.day_of_month.mode === 'last-day' ||
-    state.day_of_month.mode === 'last-weekday' ||
-    state.day_of_month.mode === 'nearest-weekday' ||
-    state.day_of_month.mode === 'range' ||
-    state.day_of_month.mode === 'specific' ||
-    state.day_of_week.mode === 'last' ||
-    state.day_of_week.mode === 'nth' ||
-    state.day_of_week.mode === 'range' ||
-    state.day_of_week.mode === 'specific' ||
-    state.month.mode !== 'every' ||
-    state.year.mode !== 'none'
-  );
+  // 默认首次进入时（秒/分/时均不是每单位触发），不应跳过
+  // 仅当用户主动配置成“每秒”且“每分”且“每时”时才触发保护
+  return isSecondEvery && isMinuteEvery && isHourEvery;
 }
 
 /**

@@ -310,15 +310,39 @@ button { cursor: pointer; }
 .cron-config-tab,.cron-primary-btn { min-height: 32px; padding: 5px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-strong); color: var(--text-soft); font-weight: 700; font-size: .84rem; }
 .cron-config-tab.is-active { color: var(--brand); border-color: var(--border-strong); background: rgba(181,138,42,.08); }
 .cron-config-panel,.cron-result-panel,.cron-doc-panel,.cron-sample-panel { padding: 14px 16px 16px 28px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-elevated); box-shadow: var(--shadow-soft); }
-.cron-config-tabs { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); gap: 6px; margin-bottom: 12px; }
-.cron-config-body { display: grid; gap: 12px; padding: 10px 2px 2px; }
+.cron-config-tabs { display: flex; align-items: stretch; gap: 4px; margin-bottom: 12px; height: 36px; }
+.cron-config-tabs .flex-1 { display: flex; flex: 1; gap: 4px; }
+.cron-config-tab { flex: 1; display: inline-flex; align-items: center; justify-content: center; min-height: unset; padding: 0; }
+
+.cron-reset-btn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-strong); color: var(--text-faint); cursor: pointer; transition: var(--transition); flex-shrink: 0; }
+.cron-reset-btn:hover { color: var(--accent); border-color: var(--border-strong); background: var(--accent-soft); }
+.cron-reset-btn svg { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+.cron-reset-btn.is-spinning svg { transform: rotate(360deg); }
+
+.cron-config-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 2px;
+  height: 280px; /* 改为固定高度，彻底消除抖动 */
+  overflow-y: auto;
+}
+
+.cron-value-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr); /* 强制一行10个 */
+  gap: 8px 4px;
+  padding-left: 10px; /* 减少左边距，腾出空间给网格 */
+}
+.cron-value-grid label { display: inline-flex; align-items: center; gap: 4px; color: var(--text-soft); font-size: .76rem; white-space: nowrap; }
+.cron-value-grid input[type="checkbox"] { margin: 0; }
 .cron-option-line,.cron-option-block { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--text); font-size: .9rem; }
 .cron-option-line input[type="radio"] { margin: 0; }
 .cron-option-line small { color: var(--text-faint); font-size: .78rem; }
 .cron-inline-input { width: 58px; min-height: 30px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-strong); color: var(--text); text-align: center; }
 .cron-option-block { align-items: start; }
-.cron-value-grid { display: grid; grid-template-columns: repeat(10,minmax(0,1fr)); gap: 6px 10px; padding-left: 34px; }
-.cron-value-grid label { display: inline-flex; align-items: center; gap: 4px; color: var(--text-soft); font-size: .76rem; }
+.cron-value-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 8px 4px; padding-left: 34px; }
+.cron-value-grid label { display: inline-flex; align-items: center; gap: 4px; color: var(--text-soft); font-size: .76rem; white-space: nowrap; }
 .cron-result-title,.cron-doc-title { margin-bottom: 12px; }
 .cron-segment-board { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); gap: 6px; }
 .cron-segment-board div { padding: 5px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-strong); text-align: center; }

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import {
   CRON_DOC_LINES,
@@ -717,6 +717,32 @@ function YearEditor({
         />
         <span>年执行一次</span>
       </label>
+
+      <div className="cron-option-block">
+        <label className="cron-option-line">
+          <input
+            checked={state.mode === 'specific'}
+            name="year-mode"
+            type="radio"
+            onChange={() => onChange({ ...state, mode: 'specific' })}
+          />
+          <span>指定</span>
+        </label>
+        <SpecificValueGrid
+          field="year"
+          selected={state.selected}
+          onToggle={(value) => {
+            const nextValues = state.selected.includes(value)
+              ? state.selected.filter((item) => item !== value)
+              : [...state.selected, value];
+            onChange({
+              ...state,
+              mode: 'specific',
+              selected: sanitizeSelectedValues('year', nextValues),
+            });
+          }}
+        />
+      </div>
     </div>
   );
 }
@@ -777,16 +803,25 @@ function ConfigEditor({
 
 export default function CronPage() {
   const [activeField, setActiveField] = useState<CronFieldKey>('second');
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const { cronState, expressionInput, setExpressionInput, commitState, setCronState } =
     useCronWorkspaceState();
   const timezone = useMemo(
-    () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Shanghai',
-    [],
+    () => (mounted ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'Asia/Shanghai') || 'Asia/Shanghai',
+    [mounted],
   );
-  const analysis = useMemo(
-    () => analyzeCronExpression(expressionInput, timezone),
-    [expressionInput, timezone],
+
+  // 1. 将分析结果改为 state，以便手动控制更新
+  const [analysis, setAnalysis] = useState(() =>
+    analyzeCronExpression(expressionInput, timezone),
   );
+
+  // 2. 当内部状态改变时（可视化点击），同步更新分析结果（为了分段预览），但我们可以选择是否跳过 nextRuns 的耗时计算
+  // 或者为了彻底符合“点击反解析才触发时间渲染”，我们可以拆分分析逻辑
   const fieldSegments = analysis.valid
     ? readExpressionFieldSegments(analysis.normalizedExpression)
     : readExpressionFieldSegments(buildCronExpression(cronState));
@@ -796,9 +831,42 @@ export default function CronPage() {
       const parsed = parseCronExpression(expressionInput);
       setCronState(parsed.state);
       setExpressionInput(parsed.normalizedExpression);
-    } catch {
-      // 校验结果已在结果区提示，这里不额外插入新布局。
+      // 手动触发完整分析（包括最近运行时间）
+      setAnalysis(analyzeCronExpression(expressionInput, timezone));
+    } catch (err) {
+      // 校验失败也更新分析结果以显示错误
+      setAnalysis(analyzeCronExpression(expressionInput, timezone));
     }
+  };
+
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleReset = () => {
+    setIsResetting(true);
+    const defaultState = createDefaultCronState();
+    const defaultExpr = buildCronExpression(defaultState);
+    setCronState(defaultState);
+    setExpressionInput(defaultExpr);
+    setAnalysis(analyzeCronExpression(defaultExpr, timezone));
+    setTimeout(() => setIsResetting(false), 400);
+  };
+
+  // 3. 可视化配置变更时，仅更新分段预览，不更新最近时间（除非你希望保持实时，但用户要求“反解析”才触发）
+  // 为了满足用户需求，我们在 commitState 处增加同步
+  const handleConfigChange = (
+    nextState: CronWorkspaceState,
+    editedField?: 'day_of_month' | 'day_of_week',
+  ) => {
+    commitState(nextState, editedField);
+    // 实时更新分段预览，但不重新计算最近时间（由 analyzeCronExpression 的参数控制或在此处部分更新）
+    const nextExpr = buildCronExpression(
+      editedField ? ensureQuartzDayPair(nextState, editedField) : nextState,
+    );
+    // 更新分析结果，但可以清空或保留旧的 nextRuns，直到手动触发
+    setAnalysis((prev) => ({
+      ...analyzeCronExpression(nextExpr, timezone),
+      nextRuns: prev.nextRuns, // 保留旧的运行时间，或者清空
+    }));
   };
 
   return (
@@ -825,22 +893,45 @@ export default function CronPage() {
 
           <section className="cron-config-panel">
             <div className="cron-config-tabs" role="tablist" aria-label="字段切换">
-              {TAB_KEYS.map((field) => (
-                <button
-                  key={field}
-                  className={`cron-config-tab ${activeField === field ? 'is-active' : ''}`}
-                  type="button"
-                  onClick={() => setActiveField(field)}
+              <div className="flex-1 flex overflow-x-auto no-scrollbar">
+                {TAB_KEYS.map((field) => (
+                  <button
+                    key={field}
+                    className={`cron-config-tab ${activeField === field ? 'is-active' : ''}`}
+                    type="button"
+                    onClick={() => setActiveField(field)}
+                  >
+                    {getTabLabel(field)}
+                  </button>
+                ))}
+              </div>
+              <button
+                className={`cron-reset-btn ${isResetting ? 'is-spinning' : ''}`}
+                title="重置配置"
+                type="button"
+                onClick={handleReset}
+              >
+                <svg
+                  fill="none"
+                  height="16"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                  width="16"
+                  xmlns="http://www.w3.org/2000/svg"
                 >
-                  {getTabLabel(field)}
-                </button>
-              ))}
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                  <path d="M3 3v5h5" />
+                </svg>
+              </button>
             </div>
 
             <ConfigEditor
               activeField={activeField}
               state={cronState}
-              onChange={commitState}
+              onChange={handleConfigChange}
             />
           </section>
 
@@ -904,9 +995,6 @@ export default function CronPage() {
               <h2>说明</h2>
             </div>
             <div className="cron-doc-block">
-              <p>{CRON_DOC_LINES[0]}</p>
-            </div>
-            <div className="cron-doc-block">
               <pre className="cron-doc-ascii">{`┌────────── [可选] 秒 (0 - 59)
 ├────────── 分钟 (0 - 59)
 ├────────── 小时 (0 - 23)
@@ -941,8 +1029,9 @@ export default function CronPage() {
                       try {
                         const parsed = parseCronExpression(sample.expression);
                         setCronState(parsed.state);
+                        setAnalysis(analyzeCronExpression(sample.expression, timezone));
                       } catch {
-                        // ignore
+                        setAnalysis(analyzeCronExpression(sample.expression, timezone));
                       }
                     }}
                   >
