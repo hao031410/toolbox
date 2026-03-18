@@ -16,6 +16,8 @@ COPY --from=deps /app/package-lock.json ./package-lock.json
 COPY --from=deps /app/apps ./apps
 COPY . .
 
+ARG CACHE_BUST=1
+RUN echo "Building with cache bust: $CACHE_BUST"
 RUN npm run build --workspace api
 
 FROM node:22-alpine AS runner

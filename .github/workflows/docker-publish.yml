@@ -62,6 +62,8 @@ jobs:
           platforms: linux/amd64
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            CACHE_BUST=${{ github.sha }}
           tags: |
             ${{ vars.DOCKER_REGISTRY }}/${{ vars.WEB_IMAGE }}:latest
             ${{ vars.DOCKER_REGISTRY }}/${{ vars.WEB_IMAGE }}:master
@@ -96,6 +98,8 @@ jobs:
           platforms: linux/amd64
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            CACHE_BUST=${{ github.sha }}
           tags: |
             ${{ vars.DOCKER_REGISTRY }}/${{ vars.API_IMAGE }}:latest
             ${{ vars.DOCKER_REGISTRY }}/${{ vars.API_IMAGE }}:master
