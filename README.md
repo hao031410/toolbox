@@ -1,36 +1,55 @@
-# Toolbox
+# Toolbox - 工具集合平台
 
-一个可扩展的个人工具站 MVP。
+一个遵循统一设计规范的工具集合平台。
 
-当前已实现：
+## 特性
 
 - 首页工具入口
 - 表达式计算器
 - 历史记录持久化
-- 持久化双实现：本地 JSON / 远程数据库
-- 发票 OCR 上传与 PDF/图片识别链路
+- OCR 发票识别
+- 局域网文件传输
 - `master` 自动构建并推送 Docker 镜像
-- `docker-compose` 双服务部署
+- 统一 Design System 设计规范
 
 ## 技术栈
 
 - 前端：Next.js 16 + React 19 + TypeScript
 - 后端：NestJS 11 + TypeScript
-- 持久化：
-  - 本地演示：JSON
-  - 生产预留：PostgreSQL
+- 样式：基于 Design Tokens 的 Tailwind CSS
+- 包管理：pnpm + Turborepo
 - 发布：GitHub Actions + Docker
 
-## 目录
+## 目录结构
 
 ```text
-apps/
-  web/      # 前端站点
-  api/      # 后端 API
-doc/        # 设计与部署文档
-docker/     # 镜像构建文件
-temp/       # 本地临时数据
-output/     # 早期静态原型，可忽略
+├── apps/
+│   ├── web/                # Web 应用
+│   └── api/                # API 服务
+├── references/             # 工具引用集合
+│   ├── @design/            # 设计规范（强制遵循）
+│   │   ├── README.md       # 设计规范文档
+│   │   ├── tokens/         # Design Tokens
+│   │   ├── components/     # 共享组件
+│   │   └── showcase/       # 规范展示页
+│   ├── @tools/             # 工具集合
+│   │   ├── _template/      # 新工具模板
+│   │   ├── ocr-invoice/    # OCR 发票识别
+│   │   ├── lan-transfer/   # 局域网文件传输
+│   │   └── calculator/     # 计算器
+│   └── @shared/            # 共享资源
+│       ├── utils/          # 工具函数
+│       ├── hooks/          # 共享 Hooks
+│       └── styles/         # 共享样式
+├── docs/                   # 文档
+│   ├── design/             # 设计文档
+│   ├── api/                # API 文档
+│   └── guides/             # 开发指南
+├── .cache/                 # 缓存目录（不提交 Git）
+│   ├── temp/               # 临时文件
+│   └── output/             # 构建输出
+├── scripts/                # 构建/部署脚本
+└── CLAUDE.md               # 开发规范（必读）
 ```
 
 ## 本地启动
@@ -130,6 +149,6 @@ npm run build
 
 ## 说明
 
-- 当前仓库中的 [output](/Users/jsh/project/tool/toolbox/codex_v1/output) 是早期静态原型，已加入忽略，不参与正式构建和发布。
-- 本地 JSON 数据默认写入 [temp](/Users/jsh/project/tool/toolbox/codex_v1/temp)。
-- 后续新增 OCR、局域网传输、后台管理等能力时，建议继续沿用 `apps/*` 的拆分方式扩展。
+- 当前仓库中的 [.cache/output](/Users/jsh/project/tool/toolbox/codex_v1/.cache/output) 是构建输出目录，不提交 Git
+- 本地 JSON 数据默认写入 [.cache/temp](/Users/jsh/project/tool/toolbox/codex_v1/.cache/temp)
+- 后续新增 OCR、局域网传输、后台管理等能力时，建议继续沿用 `apps/*` 的拆分方式扩展

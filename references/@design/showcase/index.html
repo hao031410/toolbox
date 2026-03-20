@@ -1,0 +1,1737 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Design System Showcase</title>
+  <style>
+    /* ==================== Design Tokens ==================== */
+    :root {
+      --bg-page: #f5f3f0;
+      --bg-card: #ffffff;
+      --bg-elevated: #faf9f7;
+      --bg-overlay: rgba(0,0,0,0.3);
+
+      --primary-900: #20342f;
+      --primary-700: #2d7a5a;
+      --primary-100: rgba(32,52,47,0.05);
+
+      --warning-600: #b58a2a;
+      --warning-400: #b54a2a;
+      --success-600: #2d7a5a;
+      --info-600: #2d5a7a;
+
+      --text-primary: #3c3326;
+      --text-secondary: #5c574e;
+      --text-tertiary: #8b8075;
+      --text-white: #ffffff;
+
+      --border-light: rgba(60,51,38,0.08);
+      --border-medium: rgba(60,51,38,0.12);
+      --border-focus: rgba(32,52,47,0.3);
+
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+      --shadow-xl: 0 8px 32px rgba(0,0,0,0.2);
+
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+      --radius-full: 9999px;
+    }
+
+    [data-theme="dark"] {
+      --bg-page: #1a1a1a;
+      --bg-card: #252525;
+      --bg-elevated: #2a2a2a;
+      --bg-overlay: rgba(0,0,0,0.7);
+
+      --primary-900: #4a9e7c;
+      --primary-700: #5cb85c;
+      --primary-100: rgba(74,158,124,0.1);
+
+      --warning-600: #d4a84b;
+      --warning-400: #d46a4a;
+      --success-600: #5cb85c;
+      --info-600: #5a9ec8;
+
+      --text-primary: #e8e4e0;
+      --text-secondary: #a8a29a;
+      --text-tertiary: #6b6560;
+      --text-white: #1a1a1a;
+
+      --border-light: rgba(255,255,255,0.08);
+      --border-medium: rgba(255,255,255,0.12);
+      --border-focus: rgba(74,158,124,0.4);
+
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.4);
+      --shadow-xl: 0 8px 32px rgba(0,0,0,0.5);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-page);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 40px 24px; }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 48px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border-medium);
+    }
+
+    .header h1 {
+      font-size: 32px;
+      font-weight: 600;
+      color: var(--primary-900);
+    }
+
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-medium);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+    }
+
+    .theme-toggle:hover { border-color: var(--primary-900); }
+
+    /* Section */
+    .section { margin-bottom: 48px; }
+
+    .section-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-title::before {
+      content: '';
+      width: 4px;
+      height: 20px;
+      background: var(--primary-900);
+      border-radius: 2px;
+    }
+
+    .section-desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+
+    /* Component Showcase */
+    .component-showcase {
+      background: var(--bg-card);
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border-light);
+    }
+
+    .showcase-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .showcase-row:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+
+    .row-label {
+      width: 120px;
+      font-size: 14px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .row-content {
+      flex: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: var(--primary-900);
+      color: var(--text-white);
+      padding: 12px 20px;
+      border-radius: var(--radius-md);
+    }
+
+    .btn-primary:hover {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text-secondary);
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+    }
+
+    .btn-secondary:hover {
+      color: var(--primary-900);
+      background: var(--primary-100);
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, var(--warning-600), var(--warning-400));
+      color: white;
+      padding: 12px 20px;
+      border-radius: var(--radius-md);
+      box-shadow: 0 2px 8px rgba(181,138,42,0.3);
+    }
+
+    .btn-sm { padding: 8px 12px; font-size: 13px; }
+    .btn-lg { padding: 14px 28px; font-size: 16px; }
+
+    /* Inputs */
+    .input-field {
+      width: 240px;
+      padding: 12px 16px;
+      border: 1px solid var(--border-medium);
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      background: var(--bg-card);
+      color: var(--text-primary);
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .input-field:focus {
+      outline: none;
+      border-color: var(--primary-900);
+      box-shadow: 0 0 0 3px var(--primary-100);
+    }
+
+    .input-field::placeholder { color: var(--text-tertiary); }
+
+    /* Select */
+    .select-field {
+      width: 200px;
+      padding: 12px 40px 12px 16px;
+      border: 1px solid var(--border-medium);
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      background: var(--bg-card);
+      color: var(--text-primary);
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238b8075' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .select-field:hover {
+      border-color: var(--primary-700);
+      background-color: var(--bg-elevated);
+    }
+
+    .select-field:focus {
+      outline: none;
+      border-color: var(--primary-900);
+      box-shadow: 0 0 0 3px var(--primary-100);
+    }
+
+    /* Custom Dropdown */
+    .dropdown {
+      position: relative;
+      display: inline-block;
+    }
+
+    .dropdown-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 12px;
+      width: 120px;
+      max-width: 120px;
+      border: 1px solid var(--border-medium);
+      border-radius: var(--radius-md);
+      background: var(--bg-card);
+      color: var(--text-primary);
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .dropdown-trigger-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .dropdown-trigger:hover {
+      border-color: var(--primary-700);
+      background: var(--bg-elevated);
+    }
+
+    .dropdown-trigger.active {
+      border-color: var(--primary-900);
+      box-shadow: 0 0 0 3px var(--primary-100);
+    }
+
+    .dropdown-trigger .arrow {
+      transition: transform 0.2s ease;
+      color: var(--text-tertiary);
+    }
+
+    .dropdown-trigger.active .arrow {
+      transform: rotate(180deg);
+    }
+
+    .dropdown-menu {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      min-width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      z-index: 100;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-8px);
+      transition: all 0.2s ease;
+      overflow: hidden;
+    }
+
+    .dropdown-menu.show {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .dropdown-item {
+      padding: 6px 10px;
+      font-size: 13px;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .dropdown-item:hover {
+      background: var(--primary-100);
+      color: var(--primary-900);
+    }
+
+    .dropdown-item.selected {
+      background: var(--primary-100);
+      color: var(--primary-900);
+      font-weight: 500;
+    }
+
+    .dropdown-item.selected::before {
+      content: '✓';
+      font-size: 12px;
+    }
+
+    .dropdown-divider {
+      height: 1px;
+      background: var(--border-light);
+      margin: 4px 0;
+    }
+
+    /* Checkbox & Radio */
+    .checkbox-wrapper, .radio-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .checkbox, .radio {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--border-medium);
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
+    }
+
+    .checkbox { border-radius: 4px; }
+    .radio { border-radius: 50%; }
+
+    .checkbox.checked, .radio.checked {
+      background: var(--primary-900);
+      border-color: var(--primary-900);
+    }
+
+    .checkbox.checked::after {
+      content: '✓';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 12px;
+    }
+
+    .radio.checked::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 8px;
+      height: 8px;
+      background: white;
+      border-radius: 50%;
+    }
+
+    /* Toggle */
+    .toggle {
+      width: 44px;
+      height: 24px;
+      border-radius: var(--radius-full);
+      background: var(--border-medium);
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .toggle.active { background: var(--primary-900); }
+
+    .toggle-knob {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: white;
+      position: absolute;
+      left: 2px;
+      top: 2px;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    .toggle.active .toggle-knob { transform: translateX(20px); }
+
+    /* Tags & Chips */
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tag-default {
+      background: var(--primary-100);
+      color: var(--primary-900);
+    }
+
+    .tag-selected {
+      background: var(--primary-900);
+      color: var(--text-white);
+    }
+
+    .tag-success {
+      background: rgba(45,122,90,0.1);
+      color: var(--success-600);
+    }
+
+    .tag-warning {
+      background: rgba(181,138,42,0.1);
+      color: var(--warning-600);
+    }
+
+    .tag-error {
+      background: rgba(181,74,42,0.1);
+      color: var(--warning-400);
+    }
+
+    /* Cards */
+    .card {
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border-light);
+      transition: box-shadow 0.2s, transform 0.2s;
+      cursor: pointer;
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-2px);
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .card-text {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* Radio Card */
+    .radio-card {
+      border: 2px solid var(--border-light);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      min-width: 120px;
+      text-align: center;
+    }
+
+    .radio-card:hover {
+      border-color: var(--border-medium);
+      background: var(--bg-elevated);
+    }
+
+    .radio-card.selected {
+      border-color: var(--primary-900);
+      background: var(--primary-100);
+      box-shadow: 0 0 0 3px var(--primary-100);
+    }
+
+    /* Tabs */
+    .tab-list {
+      display: flex;
+      border-bottom: 1px solid var(--border-light);
+      gap: 4px;
+    }
+
+    .tab {
+      padding: 12px 16px;
+      font-size: 14px;
+      color: var(--text-secondary);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+      font-family: inherit;
+    }
+
+    .tab:hover {
+      color: var(--text-primary);
+      background: var(--bg-elevated);
+    }
+
+    .tab.active {
+      color: var(--primary-900);
+      border-bottom-color: var(--primary-900);
+      font-weight: 500;
+    }
+
+    /* Breadcrumb */
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .breadcrumb-item { cursor: pointer; }
+    .breadcrumb-item:hover { color: var(--primary-900); }
+    .breadcrumb-item:not(:last-child)::after {
+      content: '/';
+      margin-left: 8px;
+      color: var(--text-tertiary);
+    }
+
+    .breadcrumb-item:last-child {
+      color: var(--text-primary);
+      font-weight: 500;
+      cursor: default;
+    }
+
+    /* Step Indicator */
+    .step-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .step-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--border-medium);
+      color: var(--text-tertiary);
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .step-dot.active {
+      background: var(--primary-900);
+      color: var(--text-white);
+    }
+
+    .step-dot.completed {
+      background: var(--primary-700);
+      color: var(--text-white);
+    }
+
+    .step-line {
+      width: 40px;
+      height: 2px;
+      background: var(--border-medium);
+      transition: background 0.2s;
+    }
+
+    .step-line.completed { background: var(--primary-700); }
+
+    /* Warning Banner */
+    .warning-banner {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, rgba(181,138,42,0.1), rgba(181,74,42,0.05));
+      border: 1px solid rgba(181,138,42,0.2);
+      border-radius: var(--radius-md);
+      color: var(--warning-600);
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .warning-banner:hover {
+      border-color: rgba(181,138,42,0.4);
+      box-shadow: 0 2px 8px rgba(181,138,42,0.1);
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 48px 32px;
+      background: var(--bg-elevated);
+      border-radius: var(--radius-lg);
+      border: 1px dashed var(--border-medium);
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    .empty-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .empty-desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+
+    /* Loading */
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--border-light);
+      border-top-color: var(--primary-900);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .skeleton {
+      height: 16px;
+      background: linear-gradient(90deg, var(--bg-elevated) 25%, var(--border-light) 50%, var(--bg-elevated) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: var(--radius-sm);
+    }
+
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* Table */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .data-table th, .data-table td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .data-table th {
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .data-table tr:hover td { background: var(--bg-elevated); }
+
+    /* Progress Bar */
+    .progress-bar {
+      width: 200px;
+      height: 8px;
+      background: var(--border-light);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--primary-900);
+      border-radius: var(--radius-full);
+      transition: width 0.3s ease;
+    }
+
+    /* Tooltip */
+    .tooltip-wrapper { position: relative; display: inline-block; }
+
+    .tooltip {
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 6px 10px;
+      background: var(--text-primary);
+      color: var(--bg-card);
+      font-size: 12px;
+      border-radius: var(--radius-sm);
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s, transform 0.15s;
+      margin-bottom: 6px;
+      z-index: 1300;
+    }
+
+    .tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 4px solid transparent;
+      border-top-color: var(--text-primary);
+    }
+
+    .tooltip-wrapper:hover .tooltip {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-2px);
+    }
+
+    /* Modal */
+    .modal-example {
+      width: 360px;
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-xl);
+      border: 1px solid var(--border-light);
+      overflow: hidden;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .modal-title { font-size: 16px; font-weight: 600; }
+
+    .modal-close {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-secondary);
+      border-radius: var(--radius-sm);
+      transition: all 0.2s;
+    }
+
+    .modal-close:hover {
+      background: var(--primary-100);
+      color: var(--primary-900);
+    }
+
+    .modal-body { padding: 20px; }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 16px 20px;
+      border-top: 1px solid var(--border-light);
+    }
+
+    /* Color Grid */
+    .color-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .color-card {
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-light);
+    }
+
+    .color-preview {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-family: monospace;
+    }
+
+    .color-info { padding: 10px 12px; }
+
+    .color-name {
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 2px;
+    }
+
+    .color-value {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      font-family: monospace;
+    }
+
+    /* Principle Cards */
+    .principle-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .principle-card {
+      padding: 20px;
+      background: var(--bg-elevated);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-light);
+    }
+
+    .principle-icon {
+      font-size: 28px;
+      margin-bottom: 12px;
+    }
+
+    .principle-title {
+      font-weight: 600;
+      margin-bottom: 6px;
+      font-size: 15px;
+    }
+
+    .principle-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* Interactive Demo */
+    .interactive-demo {
+      background: var(--bg-elevated);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      border: 1px solid var(--border-light);
+    }
+
+    .demo-stage {
+      min-height: 120px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    .expandable-item {
+      width: 100%;
+      max-width: 400px;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      transition: all 0.2s;
+    }
+
+    .expandable-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
+      cursor: pointer;
+      background: var(--bg-card);
+    }
+
+    .expandable-header:hover { background: var(--bg-elevated); }
+
+    .expandable-content {
+      padding: 0 16px;
+      max-height: 0;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .expandable-item.expanded .expandable-content {
+      padding: 16px;
+      max-height: 200px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .header { flex-direction: column; gap: 16px; align-items: flex-start; }
+      .color-grid { grid-template-columns: repeat(2, 1fr); }
+      .showcase-row { flex-direction: column; align-items: flex-start; }
+      .row-label { width: auto; }
+      .row-content { width: 100%; }
+      .principle-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <h1>Design System</h1>
+      <button class="theme-toggle" onclick="toggleTheme()">
+        <span id="themeIcon">🌙</span>
+        <span id="themeText">切换 Dark Mode</span>
+      </button>
+    </div>
+
+    <!-- Design Philosophy -->
+    <div class="section">
+      <h2 class="section-title">设计哲学</h2>
+      <p class="section-desc">本设计系统遵循渐进引导式交互风格，由浅入深地引导用户完成任务，避免一次性暴露全部功能造成认知负担。</p>
+      <div class="principle-grid">
+        <div class="principle-card">
+          <div class="principle-icon">🎯</div>
+          <div class="principle-title">克制</div>
+          <div class="principle-desc">颜色少而精，主色调不超过 3 个，保持界面简洁清晰</div>
+        </div>
+        <div class="principle-card">
+          <div class="principle-icon">👁</div>
+          <div class="principle-title">清晰</div>
+          <div class="principle-desc">信息层级通过颜色对比度明确区分，一眼识别重点</div>
+        </div>
+        <div class="principle-card">
+          <div class="principle-icon">🔄</div>
+          <div class="principle-title">一致</div>
+          <div class="principle-desc">相同语义元素在不同页面表现一致，降低学习成本</div>
+        </div>
+        <div class="principle-card">
+          <div class="principle-icon">🪜</div>
+          <div class="principle-title">渐进</div>
+          <div class="principle-desc">交互引导由浅入深，不一次性暴露全部功能</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Color System -->
+    <div class="section">
+      <h2 class="section-title">颜色系统</h2>
+      <div class="component-showcase">
+        <div class="color-grid">
+          <div class="color-card">
+            <div class="color-preview" style="background: var(--bg-page); color: var(--text-primary);">bg-page</div>
+            <div class="color-info">
+              <div class="color-name">Page Background</div>
+              <div class="color-value">#f5f3f0 / #1a1a1a</div>
+            </div>
+          </div>
+          <div class="color-card">
+            <div class="color-preview" style="background: var(--bg-card); border: 1px solid var(--border-light);">bg-card</div>
+            <div class="color-info">
+              <div class="color-name">Card Background</div>
+              <div class="color-value">#ffffff / #252525</div>
+            </div>
+          </div>
+          <div class="color-card">
+            <div class="color-preview" style="background: var(--primary-900); color: white;">primary</div>
+            <div class="color-info">
+              <div class="color-name">Primary</div>
+              <div class="color-value">#20342f / #4a9e7c</div>
+            </div>
+          </div>
+          <div class="color-card">
+            <div class="color-preview" style="background: var(--primary-100);">primary-100</div>
+            <div class="color-info">
+              <div class="color-name">Primary Light</div>
+              <div class="color-value">5% / 10%</div>
+            </div>
+          </div>
+          <div class="color-card">
+            <div class="color-preview" style="background: var(--warning-600); color: white;">warning</div>
+            <div class="color-info">
+              <div class="color-name">Warning</div>
+              <div class="color-value">#b58a2a / #d4a84b</div>
+            </div>
+          </div>
+          <div class="color-card">
+            <div class="color-preview" style="background: var(--warning-400); color: white;">error</div>
+            <div class="color-info">
+              <div class="color-name">Error</div>
+              <div class="color-value">#b54a2a / #d46a4a</div>
+            </div>
+          </div>
+          <div class="color-card">
+            <div class="color-preview" style="background: var(--success-600); color: white;">success</div>
+            <div class="color-info">
+              <div class="color-name">Success</div>
+              <div class="color-value">#2d7a5a / #5cb85c</div>
+            </div>
+          </div>
+          <div class="color-card">
+            <div class="color-preview" style="background: var(--text-primary); color: white;">text</div>
+            <div class="color-info">
+              <div class="color-name">Text Primary</div>
+              <div class="color-value">#3c3326 / #e8e4e0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Buttons -->
+    <div class="section">
+      <h2 class="section-title">按钮</h2>
+      <div class="component-showcase">
+        <div class="showcase-row">
+          <span class="row-label">主按钮</span>
+          <div class="row-content">
+            <button class="btn btn-primary">默认</button>
+            <button class="btn btn-primary btn-sm">小尺寸</button>
+            <button class="btn btn-primary btn-lg">大尺寸</button>
+            <button class="btn btn-primary">
+              <span>➕</span>
+              <span>带图标</span>
+            </button>
+          </div>
+        </div>
+        <div class="showcase-row">
+          <span class="row-label">次按钮</span>
+          <div class="row-content">
+            <button class="btn btn-secondary">文字按钮</button>
+            <button class="btn btn-secondary">← 返回</button>
+          </div>
+        </div>
+        <div class="showcase-row">
+          <span class="row-label">警告按钮</span>
+          <div class="row-content">
+            <button class="btn btn-warning">⚠ 警告操作</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Form Controls -->
+    <div class="section">
+      <h2 class="section-title">表单控件</h2>
+      <div class="component-showcase">
+        <div class="showcase-row">
+          <span class="row-label">文本输入</span>
+          <div class="row-content">
+            <input type="text" class="input-field" placeholder="请输入内容...">
+            <input type="text" class="input-field" value="已输入内容">
+          </div>
+        </div>
+        <div class="showcase-row">
+          <span class="row-label">选择器</span>
+          <div class="row-content">
+            <!-- Native Select -->
+            <select class="select-field">
+              <option>原生选择器</option>
+              <option>选项一</option>
+              <option>选项二</option>
+            </select>
+
+            <!-- Custom Dropdown -->
+            <div class="dropdown" id="demoDropdown">
+              <div class="dropdown-trigger" onclick="toggleDropdown('demoDropdown')">
+                <span class="dropdown-trigger-text" id="demoDropdownText">自定义下拉</span>
+                <span class="arrow">▼</span>
+              </div>
+              <div class="dropdown-menu">
+                <div class="dropdown-item selected" onclick="selectDropdownItem(this, 'demoDropdown', 'demoDropdownText')">自定义下拉</div>
+                <div class="dropdown-item" onclick="selectDropdownItem(this, 'demoDropdown', 'demoDropdownText')">选项一</div>
+                <div class="dropdown-item" onclick="selectDropdownItem(this, 'demoDropdown', 'demoDropdownText')">选项二</div>
+                <div class="dropdown-item" onclick="selectDropdownItem(this, 'demoDropdown', 'demoDropdownText')">选项三</div>
+                <div class="dropdown-divider"></div>
+                <div class="dropdown-item" onclick="selectDropdownItem(this, 'demoDropdown', 'demoDropdownText')" style="color: var(--warning-400);">删除</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="showcase-row">
+          <span class="row-label">复选框</span>
+          <div class="row-content">
+            <label class="checkbox-wrapper" onclick="toggleCheckbox(this)">
+              <div class="checkbox"></div>
+              <span>未选中</span>
+            </label>
+            <label class="checkbox-wrapper" onclick="toggleCheckbox(this)">
+              <div class="checkbox checked"></div>
+              <span>已选中</span>
+            </label>
+          </div>
+        </div>
+        <div class="showcase-row">
+          <span class="row-label">单选</span>
+          <div class="row-content">
+            <label class="radio-wrapper" onclick="toggleRadio(this)">
+              <div class="radio"></div>
+              <span>选项 A</span>
+            </label>
+            <label class="radio-wrapper" onclick="toggleRadio(this)">
+              <div class="radio checked"></div>
+              <span>选项 B</span>
+            </label>
+          </div>
+        </div>
+        <div class="showcase-row">
+          <span class="row-label">开关</span>
+          <div class="row-content">
+            <div class="toggle" onclick="toggleSwitch(this)">
+              <div class="toggle-knob"></div>
+            </div>
+            <div class="toggle active" onclick="toggleSwitch(this)">
+              <div class="toggle-knob"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Selection Controls -->
+    <div class="section">
+      <h2 class="section-title">选择类控件</h2>
+      <div class="component-showcase">
+        <div class="showcase-row">
+          <span class="row-label">标签选择</span>
+          <div class="row-content">
+            <span class="tag tag-default" onclick="toggleTag(this)">默认标签</span>
+            <span class="tag tag-selected" onclick="toggleTag(this)">选中标签</span>
+            <span class="tag tag-success">✓ 成功</span>
+            <span class="tag tag-warning">⚠ 警告</span>
+            <span class="tag tag-error">✕ 错误</span>
+          </div>
+        </div>
+        <div class="showcase-row">
+          <span class="row-label">单选卡片</span>
+          <div class="row-content">
+            <div class="radio-card" onclick="selectCard(this)">
+              <div style="font-size: 20px; margin-bottom: 4px;">📄</div>
+              <div style="font-weight: 500;">文档</div>
+            </div>
+            <div class="radio-card selected" onclick="selectCard(this)">
+              <div style="font-size: 20px; margin-bottom: 4px;">🖼️</div>
+              <div style="font-weight: 500;">图片</div>
+            </div>
+            <div class="radio-card" onclick="selectCard(this)">
+              <div style="font-size: 20px; margin-bottom: 4px;">📊</div>
+              <div style="font-weight: 500;">数据</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cards -->
+    <div class="section">
+      <h2 class="section-title">卡片</h2>
+      <div class="component-showcase">
+        <div class="showcase-row">
+          <span class="row-label">可点击卡片</span>
+          <div class="row-content">
+            <div class="card" style="width: 240px;">
+              <div class="card-title">卡片标题</div>
+              <div class="card-text">这是卡片的描述文字，用于展示简洁的信息。</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="section">
+      <h2 class="section-title">导航</h2>
+      <div class="component-showcase">
+        <div class="showcase-row">
+          <span class="row-label">标签页</span>
+          <div class="row-content" style="width: 100%;">
+            <div class="tab-list">
+              <button class="tab active" onclick="switchTab(this)">全部</button>
+              <button class="tab" onclick="switchTab(this)">进行中</button>
+              <button class="tab" onclick="switchTab(this)">已完成</button>
+            </div>
+          </div>
+        </div>
+        <div class="showcase-row">
+          <span class="row-label">面包屑</span>
+          <div class="row-content">
+            <div class="breadcrumb">
+              <span class="breadcrumb-item">首页</span>
+              <span class="breadcrumb-item">分类</span>
+              <span class="breadcrumb-item">当前页面</span>
+            </div>
+          </div>
+        </div>
+        <div class="showcase-row">
+          <span class="row-label">步骤指示器</span>
+          <div class="row-content">
+            <div class="step-indicator">
+              <div class="step-dot completed">✓</div>
+              <div class="step-line completed"></div>
+              <div class="step-dot active">2</div>
+              <div class="step-line"></div>
+              <div class="step-dot">3</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feedback & Status -->
+    <div class="section">
+      <h2 class="section-title">反馈与状态</h2>
+      <div class="component-showcase">
+        <div class="showcase-row">
+          <span class="row-label">警告横幅</span>
+          <div class="row-content">
+            <div class="warning-banner" onclick="toggleWarning(this)">
+              <span>⚠</span>
+              <span>1 项需要复核，点击查看详情</span>
+            </div>
+          </div>
+        </div>
+        <div class="showcase-row">
+          <span class="row-label">空状态</span>
+          <div class="row-content">
+            <div class="empty-state" style="width: 320px;">
+              <div class="empty-icon">📭</div>
+              <div class="empty-title">暂无数据</div>
+              <div class="empty-desc">点击上方按钮添加第一条数据</div>
+              <button class="btn btn-primary">添加数据</button>
+            </div>
+          </div>
+        </div>
+        <div class="showcase-row">
+          <span class="row-label">加载状态</span>
+          <div class="row-content">
+            <div class="spinner"></div>
+            <div style="width: 120px;">
+              <div class="skeleton" style="margin-bottom: 8px;"></div>
+              <div class="skeleton" style="width: 80%;"></div>
+            </div>
+          </div>
+        </div>
+        <div class="showcase-row">
+          <span class="row-label">进度条</span>
+          <div class="row-content">
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 67%;"></div>
+            </div>
+            <span style="font-size: 13px; color: var(--text-secondary);">67%</span>
+          </div>
+        </div>
+        <div class="showcase-row">
+          <span class="row-label">Tooltip</span>
+          <div class="row-content">
+            <div class="tooltip-wrapper">
+              <button class="btn btn-secondary">悬停查看提示</button>
+              <div class="tooltip">这是一个提示信息</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="section">
+      <h2 class="section-title">数据表格</h2>
+      <p class="section-desc">表格头部包含筛选器和操作按钮，筛选字段在左，操作按钮在右。</p>
+
+      <div class="component-showcase">
+        <!-- 数据字段筛选器 -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light); flex-wrap: wrap; gap: 12px;">
+          <!-- 左侧：数据字段筛选 -->
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <!-- 名称搜索 -->
+            <input type="text" class="input-field" placeholder="名称..." style="width: 140px; font-size: 13px; padding: 8px 12px;">
+
+            <!-- 类型筛选 -->
+            <div class="dropdown" id="tableTypeDropdown">
+              <div class="dropdown-trigger" onclick="toggleDropdown('tableTypeDropdown')" style="font-size: 13px; width: 100px;">
+                <span class="dropdown-trigger-text" id="tableTypeText">所有类型</span>
+                <span class="arrow">▼</span>
+              </div>
+              <div class="dropdown-menu" style="min-width: 100px;">
+                <div class="dropdown-item selected" onclick="selectDropdownItem(this, 'tableTypeDropdown', 'tableTypeText')">所有类型</div>
+                <div class="dropdown-item" onclick="selectDropdownItem(this, 'tableTypeDropdown', 'tableTypeText')">文档</div>
+                <div class="dropdown-item" onclick="selectDropdownItem(this, 'tableTypeDropdown', 'tableTypeText')">表格</div>
+                <div class="dropdown-item" onclick="selectDropdownItem(this, 'tableTypeDropdown', 'tableTypeText')">图片</div>
+              </div>
+            </div>
+
+            <!-- 时间筛选 -->
+            <div class="dropdown" id="tableTimeDropdown">
+              <div class="dropdown-trigger" onclick="toggleDropdown('tableTimeDropdown')" style="font-size: 13px; width: 100px;">
+                <span class="dropdown-trigger-text" id="tableTimeText">时间不限</span>
+                <span class="arrow">▼</span>
+              </div>
+              <div class="dropdown-menu" style="min-width: 100px;">
+                <div class="dropdown-item selected" onclick="selectDropdownItem(this, 'tableTimeDropdown', 'tableTimeText')">时间不限</div>
+                <div class="dropdown-item" onclick="selectDropdownItem(this, 'tableTimeDropdown', 'tableTimeText')">今天</div>
+                <div class="dropdown-item" onclick="selectDropdownItem(this, 'tableTimeDropdown', 'tableTimeText')">本周</div>
+                <div class="dropdown-item" onclick="selectDropdownItem(this, 'tableTimeDropdown', 'tableTimeText')">本月</div>
+                <div class="dropdown-item" onclick="selectDropdownItem(this, 'tableTimeDropdown', 'tableTimeText')">自定义</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 右侧：操作按钮 -->
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 13px;">
+              <span>🔍</span> 搜索
+            </button>
+            <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 13px;">
+              <span>↻</span> 重置
+            </button>
+            <button class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;">
+              <span>📥</span> 导出
+            </button>
+          </div>
+        </div>
+
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th><input type="checkbox" class="checkbox" style="width: 16px; height: 16px;"></th>
+              <th>状态</th>
+              <th>名称</th>
+              <th>类型</th>
+              <th>更新时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input type="checkbox" class="checkbox" style="width: 16px; height: 16px;"></td>
+              <td><span style="color: var(--success-600);">●</span> 正常</td>
+              <td>项目文档</td>
+              <td>文档</td>
+              <td>2026-03-19</td>
+              <td><button class="btn btn-secondary" style="padding: 4px 8px; font-size: 12px;">查看</button></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" class="checkbox" style="width: 16px; height: 16px;"></td>
+              <td><span style="color: var(--warning-600);">●</span> 待处理</td>
+              <td>数据报表</td>
+              <td>表格</td>
+              <td>2026-03-18</td>
+              <td><button class="btn btn-secondary" style="padding: 4px 8px; font-size: 12px;">查看</button></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" class="checkbox" style="width: 16px; height: 16px;"></td>
+              <td><span style="color: var(--text-tertiary);">●</span> 草稿</td>
+              <td>设计稿</td>
+              <td>图片</td>
+              <td>2026-03-17</td>
+              <td><button class="btn btn-secondary" style="padding: 4px 8px; font-size: 12px;">查看</button></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- 分页 -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-light);">
+          <span style="font-size: 13px; color: var(--text-secondary);">共 3 条记录</span>
+          <div style="display: flex; gap: 4px;">
+            <button class="btn btn-secondary" style="padding: 6px 10px; font-size: 12px;" disabled>上一页</button>
+            <button class="btn btn-primary" style="padding: 6px 10px; font-size: 12px; min-width: 32px;">1</button>
+            <button class="btn btn-secondary" style="padding: 6px 10px; font-size: 12px; min-width: 32px;">2</button>
+            <button class="btn btn-secondary" style="padding: 6px 10px; font-size: 12px;">下一页</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="section">
+      <h2 class="section-title">弹窗（谨慎使用）</h2>
+      <p class="section-desc">弹窗会阻断用户流程，仅在关键确认、错误提示时使用。优先使用抽屉、inline 展开等渐进式交互。</p>
+      <div class="component-showcase">
+        <div class="modal-example">
+          <div class="modal-header">
+            <span class="modal-title">确认操作</span>
+            <button class="modal-close">✕</button>
+          </div>
+          <div class="modal-body">
+            <p style="color: var(--text-secondary); font-size: 14px;">确定要执行此操作吗？此操作不可撤销。</p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary">取消</button>
+            <button class="btn btn-warning">确认</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Interactive Pattern Demo 1: Expandable List -->
+    <div class="section">
+      <h2 class="section-title">渐进引导式交互示例</h2>
+
+      <!-- Pattern 1: Expandable List -->
+      <p class="section-desc"><strong>模式一：展开式列表</strong> — 点击列表项展开详情，而非一次性展示所有信息。保持首屏简洁，按需展示。</p>
+      <div class="interactive-demo" style="margin-bottom: 32px;">
+        <div class="demo-stage">
+          <div class="expandable-item" onclick="toggleExpand(this)">
+            <div class="expandable-header">
+              <div>
+                <div style="font-weight: 500;">项目一</div>
+                <div style="font-size: 13px; color: var(--text-secondary);">创建于 2026-03-19</div>
+              </div>
+              <span style="color: var(--text-tertiary);">▼</span>
+            </div>
+            <div class="expandable-content">
+              <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 12px;">
+                这是项目的详细描述信息，只有在用户点击后才会展示。
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button class="btn btn-primary btn-sm">编辑</button>
+                <button class="btn btn-secondary btn-sm">删除</button>
+              </div>
+            </div>
+          </div>
+          <div class="expandable-item" onclick="toggleExpand(this)">
+            <div class="expandable-header">
+              <div>
+                <div style="font-weight: 500;">项目二</div>
+                <div style="font-size: 13px; color: var(--text-secondary);">创建于 2026-03-18</div>
+              </div>
+              <span style="color: var(--text-tertiary);">▼</span>
+            </div>
+            <div class="expandable-content">
+              <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 12px;">
+                详情内容按需展开，保持首屏简洁清晰。
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button class="btn btn-primary btn-sm">编辑</button>
+                <button class="btn btn-secondary btn-sm">删除</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pattern 2: LAN File Sharing Wizard -->
+      <p class="section-desc"><strong>模式二：分步向导</strong> — 以局域网文件共享为例，将复杂流程拆解为简单步骤，每步只有一个明确的行动点。</p>
+      <div class="interactive-demo">
+        <!-- Step Indicator -->
+        <div style="display: flex; justify-content: center; margin-bottom: 24px;">
+          <div class="step-indicator" id="lanShareSteps">
+            <div class="step-dot active" data-step="1">1</div>
+            <div class="step-line"></div>
+            <div class="step-dot" data-step="2">2</div>
+            <div class="step-line"></div>
+            <div class="step-dot" data-step="3">3</div>
+          </div>
+        </div>
+
+        <!-- Step 1: Upload -->
+        <div class="demo-step" id="step1" style="text-align: center;">
+          <div style="font-size: 48px; margin-bottom: 16px;">📤</div>
+          <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">选择要分享的文件</div>
+          <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 24px;">拖拽文件到此处，或点击选择文件</div>
+          <div class="upload-zone-example" onclick="goToStep(2)" style="margin: 0 auto 16px; cursor: pointer;">
+            <div style="font-size: 32px; margin-bottom: 8px;">📁</div>
+            <div style="font-size: 14px; color: var(--text-secondary);">点击上传文件</div>
+          </div>
+        </div>
+
+        <!-- Step 2: Processing -->
+        <div class="demo-step" id="step2" style="text-align: center; display: none;">
+          <div style="font-size: 48px; margin-bottom: 16px;">⚡</div>
+          <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">正在生成分享链接</div>
+          <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 24px;">请稍候，文件正在准备中...</div>
+          <div style="width: 200px; margin: 0 auto 24px;">
+            <div class="progress-bar">
+              <div class="progress-fill" id="demoProgress" style="width: 0%;"></div>
+            </div>
+          </div>
+          <button class="btn btn-secondary" onclick="goToStep(1)">取消</button>
+        </div>
+
+        <!-- Step 3: Result -->
+        <div class="demo-step" id="step3" style="text-align: center; display: none;">
+          <div style="font-size: 48px; margin-bottom: 16px;">✓</div>
+          <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">分享链接已生成</div>
+          <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 24px;">同一局域网内的设备可以通过以下链接访问</div>
+          <div style="background: var(--bg-page); border: 1px solid var(--border-medium); border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; max-width: 400px; margin: 0 auto 24px;">
+            <code style="flex: 1; font-size: 14px; color: var(--primary-900); text-align: left;">http://192.168.1.100:8080/file/abc123</code>
+            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">复制</button>
+          </div>
+          <div style="display: flex; gap: 12px; justify-content: center;">
+            <button class="btn btn-secondary" onclick="goToStep(1)">分享新文件</button>
+            <button class="btn btn-primary">完成</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Design Principles -->
+      <div style="margin-top: 24px; padding: 20px; background: var(--bg-elevated); border-radius: 8px; border: 1px solid var(--border-light);">
+        <div style="font-weight: 600; margin-bottom: 12px; font-size: 14px;">渐进引导设计原则</div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; font-size: 13px; color: var(--text-secondary);">
+          <div>✓ <strong>首屏极简</strong> — 只展示核心入口</div>
+          <div>✓ <strong>即时反馈</strong> — 任何操作都有视觉响应</div>
+          <div>✓ <strong>分步引导</strong> — 复杂流程拆解为简单步骤</div>
+          <div>✓ <strong>避免阻断</strong> — 优先使用 inline 展开而非弹窗</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const isDark = html.getAttribute('data-theme') === 'dark';
+      if (isDark) {
+        html.removeAttribute('data-theme');
+        document.getElementById('themeIcon').textContent = '🌙';
+        document.getElementById('themeText').textContent = '切换 Dark Mode';
+      } else {
+        html.setAttribute('data-theme', 'dark');
+        document.getElementById('themeIcon').textContent = '☀️';
+        document.getElementById('themeText').textContent = '切换 Light Mode';
+      }
+    }
+
+    function toggleCheckbox(el) {
+      const checkbox = el.querySelector('.checkbox');
+      checkbox.classList.toggle('checked');
+    }
+
+    function toggleRadio(el) {
+      document.querySelectorAll('.radio-wrapper .radio').forEach(r => r.classList.remove('checked'));
+      el.querySelector('.radio').classList.add('checked');
+    }
+
+    function toggleSwitch(el) {
+      el.classList.toggle('active');
+    }
+
+    function toggleTag(el) {
+      if (el.classList.contains('tag-default')) {
+        el.classList.remove('tag-default');
+        el.classList.add('tag-selected');
+      } else if (el.classList.contains('tag-selected')) {
+        el.classList.remove('tag-selected');
+        el.classList.add('tag-default');
+      }
+    }
+
+    function selectCard(el) {
+      document.querySelectorAll('.radio-card').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+    }
+
+    function switchTab(el) {
+      el.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+    }
+
+    function toggleExpand(el) {
+      el.classList.toggle('expanded');
+      const arrow = el.querySelector('.expandable-header span:last-child');
+      arrow.textContent = el.classList.contains('expanded') ? '▲' : '▼';
+    }
+
+    function toggleWarning(el) {
+      // 渐进引导：点击后展开详情，而非弹窗
+      alert('实际场景：展开详情面板或跳转到相关页面，而非阻断式弹窗');
+    }
+
+    // Custom Dropdown
+    function toggleDropdown(dropdownId) {
+      const dropdown = document.getElementById(dropdownId);
+      const trigger = dropdown.querySelector('.dropdown-trigger');
+      const menu = dropdown.querySelector('.dropdown-menu');
+
+      // Close other dropdowns
+      document.querySelectorAll('.dropdown-menu.show').forEach(m => {
+        if (m !== menu) {
+          m.classList.remove('show');
+          m.previousElementSibling.classList.remove('active');
+        }
+      });
+
+      // Toggle current
+      menu.classList.toggle('show');
+      trigger.classList.toggle('active');
+    }
+
+    function selectDropdownItem(item, dropdownId, textId) {
+      const dropdown = document.getElementById(dropdownId);
+      const textSpan = document.getElementById(textId);
+
+      // Update selected state
+      dropdown.querySelectorAll('.dropdown-item').forEach(i => i.classList.remove('selected'));
+      item.classList.add('selected');
+
+      // Update trigger text
+      textSpan.textContent = item.textContent;
+
+      // Close dropdown
+      toggleDropdown(dropdownId);
+    }
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.dropdown')) {
+        document.querySelectorAll('.dropdown-menu.show').forEach(m => {
+          m.classList.remove('show');
+          m.previousElementSibling.classList.remove('active');
+        });
+      }
+    });
+
+    // LAN Share Wizard Demo
+    let currentDemoStep = 1;
+
+    function goToStep(step) {
+      // Hide all steps
+      document.querySelectorAll('.demo-step').forEach(s => s.style.display = 'none');
+
+      // Update step indicator
+      const dots = document.querySelectorAll('#lanShareSteps .step-dot');
+      const lines = document.querySelectorAll('#lanShareSteps .step-line');
+
+      dots.forEach((dot, index) => {
+        dot.classList.remove('active', 'completed');
+        if (index + 1 < step) {
+          dot.classList.add('completed');
+          dot.textContent = '✓';
+        } else if (index + 1 === step) {
+          dot.classList.add('active');
+          dot.textContent = index + 1;
+        } else {
+          dot.textContent = index + 1;
+        }
+      });
+
+      lines.forEach((line, index) => {
+        line.classList.toggle('completed', index < step - 1);
+      });
+
+      // Show current step
+      document.getElementById('step' + step).style.display = 'block';
+      currentDemoStep = step;
+
+      // Simulate progress for step 2
+      if (step === 2) {
+        simulateDemoProgress();
+      }
+    }
+
+    function simulateDemoProgress() {
+      const fill = document.getElementById('demoProgress');
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += Math.random() * 20;
+        if (progress >= 100) {
+          progress = 100;
+          clearInterval(interval);
+          setTimeout(() => goToStep(3), 300);
+        }
+        fill.style.width = progress + '%';
+      }, 200);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>你的工具箱 | 局域网文件传输</title>
+    <meta
+      name="description"
+      content="局域网文件传输工具 UI 原型。先建立连接，再进入双向传输会话页。"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <script defer src="./site.js"></script>
+    <style>
+      .lan-page {
+        padding-top: 10px;
+      }
+
+      .lan-intro {
+        padding: 18px 0 10px;
+      }
+
+      .lan-intro h1 {
+        margin-bottom: 6px;
+        font-size: clamp(1.9rem, 3.6vw, 2.8rem);
+      }
+
+      .lan-intro p {
+        max-width: 42ch;
+        font-size: 0.96rem;
+      }
+
+      .lan-flow-bar,
+      .lan-entry-grid,
+      .lan-connect-grid,
+      .lan-session-layout,
+      .lan-transfer-grid,
+      .lan-meta-grid {
+        display: grid;
+        gap: 16px;
+      }
+
+      .lan-flow-bar {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        margin-top: 14px;
+      }
+
+      .lan-flow-step,
+      .lan-entry-card,
+      .lan-panel,
+      .lan-side-card,
+      .lan-transfer-card {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: 28px;
+        background: var(--bg-elevated);
+        box-shadow: var(--shadow);
+      }
+
+      .lan-flow-step::before,
+      .lan-entry-card::before,
+      .lan-panel::before,
+      .lan-side-card::before,
+      .lan-transfer-card::before {
+        content: "";
+        position: absolute;
+        inset: 12px;
+        border-radius: 20px;
+        border: 1px solid rgba(181, 138, 42, 0.1);
+        pointer-events: none;
+      }
+
+      .lan-flow-step {
+        display: grid;
+        gap: 8px;
+        min-height: 122px;
+        padding: 18px 20px;
+      }
+
+      .lan-flow-step.is-active {
+        border-color: var(--border-strong);
+        background: radial-gradient(circle at top right, rgba(181, 138, 42, 0.14), transparent 38%), var(--bg-elevated);
+      }
+
+      .lan-flow-index,
+      .lan-pill,
+      .lan-status-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 32px;
+        padding: 0 12px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--bg-strong);
+        color: var(--text-soft);
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .lan-flow-step h2,
+      .lan-entry-card h2,
+      .lan-panel h2,
+      .lan-side-card h3,
+      .lan-transfer-card h3 {
+        margin: 0;
+        font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif;
+        letter-spacing: -0.02em;
+      }
+
+      .lan-flow-step p,
+      .lan-entry-card p,
+      .lan-panel p,
+      .lan-side-card p,
+      .lan-helper,
+      .lan-transfer-card p {
+        margin: 0;
+        color: var(--text-soft);
+      }
+
+      .lan-entry-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-top: 18px;
+      }
+
+      .lan-entry-card {
+        display: grid;
+        gap: 12px;
+        min-height: 230px;
+        padding: 20px;
+        text-align: left;
+        transition: transform var(--transition), border-color var(--transition);
+      }
+
+      .lan-entry-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--border-strong);
+      }
+
+      .lan-entry-card.is-active {
+        border-color: var(--border-strong);
+        background: radial-gradient(circle at top right, rgba(181, 138, 42, 0.14), transparent 38%), var(--bg-elevated);
+      }
+
+      .lan-entry-head,
+      .lan-card-head,
+      .lan-files-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .lan-dot {
+        width: 14px;
+        height: 14px;
+        margin-top: 9px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--accent), var(--brand));
+        box-shadow: 0 0 0 6px var(--accent-soft);
+      }
+
+      .lan-entry-meta {
+        color: var(--text-faint);
+        font-size: 0.84rem;
+      }
+
+      .lan-panel,
+      .lan-side-card,
+      .lan-transfer-card {
+        padding: 20px;
+      }
+
+      .lan-connect-grid {
+        grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.7fr);
+        margin-top: 18px;
+        align-items: start;
+      }
+
+      .lan-connect-stack,
+      .lan-side-stack {
+        display: grid;
+        gap: 14px;
+      }
+
+      .lan-hero-panel {
+        display: grid;
+        gap: 16px;
+      }
+
+      .lan-hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .lan-muted-btn {
+        background: transparent;
+        color: var(--text-soft);
+      }
+
+      .lan-code-grid {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 14px;
+        align-items: end;
+      }
+
+      .lan-code-field {
+        display: grid;
+        gap: 8px;
+      }
+
+      .lan-code-field span,
+      .lan-meta-grid span,
+      .lan-file-row span,
+      .lan-progress-meta,
+      .lan-note-list,
+      .lan-chip-list span {
+        color: var(--text-faint);
+        font-size: 0.82rem;
+      }
+
+      .lan-code-field input {
+        width: 100%;
+        min-height: 52px;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 12px 16px;
+        background: var(--bg-strong);
+        color: var(--text);
+        font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+        font-size: 1.2rem;
+        letter-spacing: 0.18em;
+      }
+
+      .lan-code-box {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 80px;
+        padding: 0 18px;
+        border: 1px dashed var(--border-strong);
+        border-radius: 22px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent), var(--bg-strong);
+        color: var(--brand);
+        font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+        font-weight: 700;
+        letter-spacing: 0.24em;
+      }
+
+      .lan-chip-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .lan-chip-list span {
+        display: inline-flex;
+        align-items: center;
+        min-height: 34px;
+        padding: 0 12px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+      }
+
+      .lan-status-badge.is-pending {
+        color: var(--accent);
+        background: rgba(181, 138, 42, 0.12);
+      }
+
+      .lan-status-badge.is-live {
+        color: var(--brand);
+        background: rgba(32, 52, 47, 0.12);
+      }
+
+      .lan-status-badge.is-done {
+        color: var(--success);
+        background: rgba(36, 95, 75, 0.12);
+      }
+
+      .lan-meta-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-top: 14px;
+      }
+
+      .lan-meta-grid div,
+      .lan-stat-list div {
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        background: var(--bg-strong);
+      }
+
+      .lan-meta-grid strong,
+      .lan-stat-list strong {
+        display: block;
+        margin-top: 4px;
+        color: var(--brand);
+        font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+        font-size: 1.02rem;
+      }
+
+      .lan-session-layout {
+        grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.6fr);
+        margin-top: 18px;
+        align-items: start;
+      }
+
+      .lan-transfer-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .lan-dropzone {
+        display: grid;
+        gap: 14px;
+        min-height: 194px;
+        padding: 16px;
+        border: 1px solid var(--border);
+        border-radius: 22px;
+        background: radial-gradient(circle at top right, rgba(181, 138, 42, 0.12), transparent 38%), var(--bg-strong);
+      }
+
+      .lan-dropzone-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        background: linear-gradient(135deg, rgba(181, 138, 42, 0.12), rgba(32, 52, 47, 0.08));
+        color: var(--brand);
+      }
+
+      .lan-dropzone-icon svg {
+        width: 22px;
+        height: 22px;
+      }
+
+      .lan-transfer-card h3 {
+        font-size: 1.18rem;
+      }
+
+      .lan-files-list,
+      .lan-note-list {
+        display: grid;
+        gap: 10px;
+        margin: 14px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .lan-file-row {
+        display: grid;
+        gap: 8px;
+        padding: 14px;
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .lan-file-row strong {
+        font-size: 0.95rem;
+      }
+
+      .lan-progress-track {
+        position: relative;
+        height: 9px;
+        overflow: hidden;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: rgba(124, 117, 105, 0.12);
+      }
+
+      .lan-progress-track span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--accent), var(--brand));
+      }
+
+      .lan-progress-meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 6px;
+      }
+
+      .lan-note-list li {
+        position: relative;
+        padding-left: 16px;
+        color: var(--text-soft);
+      }
+
+      .lan-note-list li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0.72em;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+      }
+
+      .lan-stat-list {
+        display: grid;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      @media (max-width: 1024px) {
+        .lan-entry-grid,
+        .lan-connect-grid,
+        .lan-session-layout,
+        .lan-transfer-grid,
+        .lan-flow-bar {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .lan-code-grid,
+        .lan-meta-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .lan-hero-actions,
+        .lan-chip-list,
+        .lan-files-head {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .lan-code-box {
+          letter-spacing: 0.16em;
+          font-size: 1.5rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header fade-up">
+        <a class="brand" href="./index.html">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span class="brand-text">你的工具箱</span>
+        </a>
+        <nav class="main-nav" aria-label="主导航">
+          <a href="./index.html">首页</a>
+          <button class="theme-toggle" type="button" data-theme-toggle aria-label="切换主题"></button>
+        </nav>
+      </header>
+
+      <main class="main-content lan-page">
+        <section class="page-intro lan-intro fade-up fade-delay-1">
+          <p class="page-kicker">Local Transfer Tool</p>
+          <h1>局域网文件传输</h1>
+          <p>先建立连接，再进入会话页双向传输。两台设备都可发送，也都可接收。</p>
+        </section>
+
+        <section class="lan-flow-bar fade-up fade-delay-2" aria-label="流程总览">
+          <article class="lan-flow-step is-active" data-scene-tab="entry">
+            <span class="lan-flow-index">Step 1</span>
+            <h2>建立连接</h2>
+            <p>先决定是创建连接还是加入连接，不提前暴露复杂状态。</p>
+          </article>
+          <article class="lan-flow-step" data-scene-tab="connect">
+            <span class="lan-flow-index">Step 2</span>
+            <h2>完成配对</h2>
+            <p>通过 6 位短码进入同一会话，等待局域网直连建立。</p>
+          </article>
+          <article class="lan-flow-step" data-scene-tab="session">
+            <span class="lan-flow-index">Step 3</span>
+            <h2>进入会话</h2>
+            <p>会话建立后，双方都能发送和接收，不再固定角色。</p>
+          </article>
+        </section>
+
+        <section class="lan-scene" id="scene-entry">
+          <section class="lan-entry-grid fade-up fade-delay-2">
+            <button class="lan-entry-card is-active" type="button" data-entry-trigger="create">
+              <div class="lan-entry-head">
+                <span class="lan-pill">Create</span>
+                <span class="lan-dot" aria-hidden="true"></span>
+              </div>
+              <h2>创建连接</h2>
+              <p>适合当前设备先发起会话，生成短码，让另一台设备输入后加入。</p>
+              <span class="lan-entry-meta">常见于电脑打开页面，手机输入短码加入</span>
+            </button>
+
+            <button class="lan-entry-card" type="button" data-entry-trigger="join">
+              <div class="lan-entry-head">
+                <span class="lan-pill">Join</span>
+                <span class="lan-dot" aria-hidden="true"></span>
+              </div>
+              <h2>加入连接</h2>
+              <p>适合当前设备拿到短码后直接加入，不需要先创建自己的会话。</p>
+              <span class="lan-entry-meta">常见于手机端打开后，直接输入电脑展示的短码</span>
+            </button>
+          </section>
+
+          <section class="lan-connect-grid fade-up fade-delay-3">
+            <article class="lan-panel lan-hero-panel">
+              <div class="lan-card-head">
+                <div>
+                  <p class="page-kicker" id="entry-kicker">Create Connection</p>
+                  <h2 id="entry-title">先创建一个临时连接</h2>
+                </div>
+                <span class="lan-status-badge is-pending">未建连</span>
+              </div>
+              <p id="entry-desc">连接建立成功后会进入统一传输会话页。届时不再区分发送端或接收端，双方都可拖拽文件开始传输。</p>
+              <div class="lan-hero-actions">
+                <button class="btn btn-primary" type="button">创建连接</button>
+                <button class="btn lan-muted-btn" type="button">查看说明</button>
+              </div>
+              <div class="lan-chip-list">
+                <span>同一局域网</span>
+                <span>文件不经过云端</span>
+                <span>手机 / 电脑均可使用</span>
+              </div>
+            </article>
+
+            <aside class="lan-side-stack">
+              <article class="lan-side-card">
+                <div class="lan-card-head">
+                  <h3>为什么先引导</h3>
+                  <span class="lan-pill">UX</span>
+                </div>
+                <ul class="lan-note-list">
+                  <li>首屏只保留一个关键任务，降低第一次使用门槛。</li>
+                  <li>避免用户一打开就看到大量状态和文件列表而发懵。</li>
+                  <li>把“连接”和“传输”拆开后，信息层次更清晰。</li>
+                </ul>
+              </article>
+            </aside>
+          </section>
+        </section>
+
+        <section class="lan-scene" id="scene-connect" hidden>
+          <section class="lan-connect-grid fade-up fade-delay-2">
+            <article class="lan-panel">
+              <div class="lan-card-head">
+                <div>
+                  <p class="page-kicker">Pairing</p>
+                  <h2 id="connect-title">通过短码完成配对</h2>
+                </div>
+                <span class="lan-status-badge is-live" id="connect-badge">等待对端加入</span>
+              </div>
+              <p id="connect-desc">这一页只负责让两台设备进入同一个会话，不展示文件列表，避免连接前的信息噪音。</p>
+
+              <div class="lan-code-grid" style="margin-top: 16px;">
+                <div class="lan-code-field" id="create-code-block">
+                  <span>当前短码</span>
+                  <strong class="lan-code-box">248 691</strong>
+                </div>
+                <label class="lan-code-field" id="join-code-block" hidden>
+                  <span>输入对方给出的短码</span>
+                  <input type="text" value="248 691" readonly />
+                </label>
+                <div class="lan-hero-actions">
+                  <button class="btn btn-primary" type="button" id="connect-primary-action">等待加入</button>
+                  <button class="btn lan-muted-btn" type="button">重新生成</button>
+                </div>
+              </div>
+
+              <div class="lan-meta-grid">
+                <div>
+                  <span>当前设备</span>
+                  <strong id="connect-self">MacBook Pro</strong>
+                </div>
+                <div>
+                  <span>对端状态</span>
+                  <strong id="connect-peer-status">尚未加入</strong>
+                </div>
+                <div>
+                  <span>连接方式</span>
+                  <strong>局域网直连</strong>
+                </div>
+                <div>
+                  <span>短码时效</span>
+                  <strong>09:42</strong>
+                </div>
+              </div>
+            </article>
+
+            <aside class="lan-side-stack">
+              <article class="lan-side-card">
+                <div class="lan-card-head">
+                  <h3>连接中的文案重点</h3>
+                  <span class="lan-pill">Copy</span>
+                </div>
+                <ul class="lan-note-list">
+                  <li>强调“当前只是配对，还没开始传文件”。</li>
+                  <li>让用户知道下一步是等待另一台设备输入短码。</li>
+                  <li>为后续扫码配对预留同一区域，不改整体结构。</li>
+                </ul>
+              </article>
+            </aside>
+          </section>
+        </section>
+
+        <section class="lan-scene" id="scene-session" hidden>
+          <section class="lan-session-layout fade-up fade-delay-2">
+            <article class="lan-panel">
+              <div class="lan-card-head">
+                <div>
+                  <p class="page-kicker">Session Live</p>
+                  <h2>连接已建立，双方都可发送与接收</h2>
+                  <p class="lan-helper">这里不再叫“发送端 / 接收端”，而是一个共享会话。你拖文件给对方，对方也能反向发给你。</p>
+                </div>
+                <span class="lan-status-badge is-live">会话进行中</span>
+              </div>
+
+              <div class="lan-meta-grid">
+                <div>
+                  <span>对端设备</span>
+                  <strong>iPhone 16 Pro</strong>
+                </div>
+                <div>
+                  <span>会话短码</span>
+                  <strong>248 691</strong>
+                </div>
+                <div>
+                  <span>传输速度</span>
+                  <strong>8.4 MB/s</strong>
+                </div>
+                <div>
+                  <span>连接状态</span>
+                  <strong>稳定</strong>
+                </div>
+              </div>
+
+              <div class="lan-transfer-grid" style="margin-top: 16px;">
+                <section class="lan-transfer-card">
+                  <div class="lan-files-head">
+                    <h3>我发送的文件</h3>
+                    <span class="lan-pill">Upload</span>
+                  </div>
+                  <div class="lan-dropzone" style="margin-top: 14px;">
+                    <div class="lan-dropzone-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 16V6"></path>
+                        <path d="m8 10 4-4 4 4"></path>
+                        <path d="M5 18h14"></path>
+                      </svg>
+                    </div>
+                    <div>
+                      <h3>拖拽文件，立即发送给对方</h3>
+                      <p>进入会话后，这一侧只负责“我主动发出去”的文件，不混杂接收记录。</p>
+                    </div>
+                    <div class="lan-hero-actions">
+                      <button class="btn btn-primary" type="button">选择文件</button>
+                      <button class="btn lan-muted-btn" type="button">清空</button>
+                    </div>
+                  </div>
+
+                  <ul class="lan-files-list">
+                    <li class="lan-file-row">
+                      <div class="lan-files-head">
+                        <strong>meeting-notes.pdf</strong>
+                        <span>1.2 MB</span>
+                      </div>
+                      <div class="lan-progress-track"><span style="width: 76%"></span></div>
+                      <div class="lan-progress-meta">
+                        <span>传输中</span>
+                        <span>76%</span>
+                      </div>
+                    </li>
+                    <li class="lan-file-row">
+                      <div class="lan-files-head">
+                        <strong>demo-video.mp4</strong>
+                        <span>28.6 MB</span>
+                      </div>
+                      <div class="lan-progress-track"><span style="width: 24%"></span></div>
+                      <div class="lan-progress-meta">
+                        <span>排队中</span>
+                        <span>24%</span>
+                      </div>
+                    </li>
+                  </ul>
+                </section>
+
+                <section class="lan-transfer-card">
+                  <div class="lan-files-head">
+                    <h3>我接收的文件</h3>
+                    <span class="lan-pill">Inbox</span>
+                  </div>
+                  <p style="margin-top: 14px;">对方发来的文件独立展示，便于区分“我发出去的”和“我收到的”。</p>
+
+                  <ul class="lan-files-list">
+                    <li class="lan-file-row">
+                      <div class="lan-files-head">
+                        <strong>trip-photo-01.jpg</strong>
+                        <span>2.4 MB</span>
+                      </div>
+                      <div class="lan-progress-track"><span style="width: 100%"></span></div>
+                      <div class="lan-progress-meta">
+                        <span>已接收</span>
+                        <span>100%</span>
+                      </div>
+                    </li>
+                    <li class="lan-file-row">
+                      <div class="lan-files-head">
+                        <strong>notes.zip</strong>
+                        <span>8.9 MB</span>
+                      </div>
+                      <div class="lan-progress-track"><span style="width: 100%"></span></div>
+                      <div class="lan-progress-meta">
+                        <span>可保存</span>
+                        <span>100%</span>
+                      </div>
+                    </li>
+                  </ul>
+
+                  <div class="lan-hero-actions" style="margin-top: 14px;">
+                    <button class="btn btn-primary" type="button">全部下载</button>
+                    <button class="btn lan-muted-btn" type="button">清空记录</button>
+                  </div>
+                </section>
+              </div>
+            </article>
+
+            <aside class="lan-side-stack">
+              <article class="lan-side-card">
+                <div class="lan-card-head">
+                  <h3>为什么改成会话页</h3>
+                  <span class="lan-pill">Model</span>
+                </div>
+                <ul class="lan-note-list">
+                  <li>真实需求是“双方互传”，不是单向邮差模型。</li>
+                  <li>一旦建连完成，继续保留发送端 / 接收端会制造误解。</li>
+                  <li>统一会话页更适合后续加历史、断点续传和扫码配对。</li>
+                </ul>
+              </article>
+
+              <article class="lan-side-card">
+                <div class="lan-card-head">
+                  <h3>会话摘要</h3>
+                  <span class="lan-pill">Live</span>
+                </div>
+                <div class="lan-stat-list">
+                  <div>
+                    <span>我发出的文件</span>
+                    <strong>2 个</strong>
+                  </div>
+                  <div>
+                    <span>我收到的文件</span>
+                    <strong>2 个</strong>
+                  </div>
+                  <div>
+                    <span>当前速度</span>
+                    <strong>8.4 MB/s</strong>
+                  </div>
+                  <div>
+                    <span>预计剩余</span>
+                    <strong>00:18</strong>
+                  </div>
+                </div>
+              </article>
+            </aside>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const entryConfig = {
+        create: {
+          kicker: "Create Connection",
+          title: "先创建一个临时连接",
+          desc: "当前设备先发起会话，生成短码，让另一台设备输入后加入。更适合电脑先开页面。",
+          connectTitle: "生成短码，等待对端加入",
+          connectDesc: "这是建立连接的中间页。当前不展示文件列表，只让用户专注完成配对。",
+          badge: "等待对端加入",
+          action: "等待加入",
+          self: "MacBook Pro",
+          peer: "尚未加入",
+          createVisible: true
+        },
+        join: {
+          kicker: "Join Connection",
+          title: "输入短码，直接加入已有连接",
+          desc: "当前设备不创建自己的会话，直接加入对方已创建的短码。更适合手机快速接入。",
+          connectTitle: "输入短码并完成加入",
+          connectDesc: "加入成功后直接进入共享会话页。这里不再要求用户先理解完整传输结构。",
+          badge: "准备加入",
+          action: "加入会话",
+          self: "iPhone 16 Pro",
+          peer: "等待短码校验",
+          createVisible: false
+        }
+      };
+
+      function setActiveScene(scene) {
+        document.querySelectorAll(".lan-flow-step").forEach((node) => {
+          node.classList.toggle("is-active", node.dataset.sceneTab === scene);
+        });
+        document.querySelectorAll(".lan-scene").forEach((node) => {
+          node.hidden = node.id !== `scene-${scene}`;
+        });
+      }
+
+      function setEntryMode(mode) {
+        const config = entryConfig[mode];
+
+        document.querySelectorAll("[data-entry-trigger]").forEach((node) => {
+          node.classList.toggle("is-active", node.dataset.entryTrigger === mode);
+        });
+
+        document.querySelector("#entry-kicker").textContent = config.kicker;
+        document.querySelector("#entry-title").textContent = config.title;
+        document.querySelector("#entry-desc").textContent = config.desc;
+        document.querySelector("#connect-title").textContent = config.connectTitle;
+        document.querySelector("#connect-desc").textContent = config.connectDesc;
+        document.querySelector("#connect-badge").textContent = config.badge;
+        document.querySelector("#connect-primary-action").textContent = config.action;
+        document.querySelector("#connect-self").textContent = config.self;
+        document.querySelector("#connect-peer-status").textContent = config.peer;
+        document.querySelector("#create-code-block").hidden = !config.createVisible;
+        document.querySelector("#join-code-block").hidden = config.createVisible;
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        let currentMode = "create";
+        setEntryMode(currentMode);
+        setActiveScene("entry");
+
+        document.querySelectorAll("[data-entry-trigger]").forEach((node) => {
+          node.addEventListener("click", () => {
+            currentMode = node.dataset.entryTrigger;
+            setEntryMode(currentMode);
+          });
+        });
+
+        document.querySelectorAll(".lan-flow-step").forEach((node) => {
+          node.addEventListener("click", () => {
+            setActiveScene(node.dataset.sceneTab);
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
