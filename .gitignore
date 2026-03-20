@@ -16,8 +16,7 @@ coverage/
 apps/*/.next/
 apps/*/dist/
 
-temp/
-output/
+.cache/
 
 *.log
 npm-debug.log*
